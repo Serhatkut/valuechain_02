@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DHL eCommerce — Value Chain & Customer Journey (v0.9)</title>
+  <link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="badge">DHL</div>
+      <div>
+        <div class="title">Value Chain / Customer Journey</div>
+        <div class="subtitle">Single web app shell — same <code>data/data.json</code></div>
+      </div>
+    </div>
+
+    <nav class="tabs" aria-label="Views">
+      <a class="tab" href="#/value-chain" data-view="value-chain">Value Chain</a>
+      <a class="tab" href="#/customer-journey" data-view="customer-journey">Customer Journey</a>
+    </nav>
+
+    <div class="actions">
+      <button id="openStandalone" class="btn" type="button">Open view standalone</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <!-- v0.9 approach: we embed the existing pages as views via iframe.
+         This is the fastest way to unify into a single shell without rewriting either app.
+         Next step (v1.0): extract shared data loader + state, and render both views natively.
+    -->
+    <iframe id="viewFrame" class="frame" title="App view" loading="eager"></iframe>
+  </main>
+
+  <footer class="footer">
+    <div>
+      Tip: Use a local server for relative paths (e.g., <code>python -m http.server</code>). GitHub Pages also works.
+    </div>
+  </footer>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

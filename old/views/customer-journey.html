@@ -1,0 +1,2749 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>DHL eCommerce · Customer Journey Map</title>
+
+  <style>
+    :root {
+      /* DHL brand */
+      --dhl-red: #D40511;
+      --dhl-yellow: #FFCC00;
+
+      --ink: #101828;
+      --muted: #667085;
+      --bg: #F5F7FA;
+      --panel: #FFFFFF;
+      --line: rgba(16, 24, 40, 0.12);
+
+      --header-h: 56px;
+
+      /* footer + deck */
+      --legend-h: 40px;
+      --footer-h: 30px;
+      --deck-collapsed-h: calc(48px + var(--legend-h) + var(--footer-h));
+      --deck-expanded-h: min(60vh, 720px);
+
+      --lane-label-w: 300px;
+
+      /* story lane row sizing (computed in JS) */
+      --story-row-h: 58px;
+      --story-gap: 6px;
+
+      --shadow: 0 10px 26px rgba(16, 24, 40, 0.10);
+      --shadow-2: 0 18px 44px rgba(16, 24, 40, 0.14);
+
+      --radius: 14px;
+
+      --tooltipW: 460px;
+
+      /* Lane theme tints */
+      --tint-l2c: rgba(212, 5, 17, 0.06);
+      --tint-o2d: rgba(255, 204, 0, 0.18);
+      --tint-d2o: rgba(164, 224, 176, 0.22);
+
+      /* Ownership fixed palette (stable) */
+      --own-commercial: #D40511;
+      /* Sales/Commercial */
+      --own-ops: #FFCC00;
+      /* Operations */
+      --own-finance: #5B4B8A;
+      /* Finance purple */
+      --own-it: #2457A7;
+      /* IT */
+      --own-data: #00A3C7;
+      /* Data */
+      --own-ea: #2F3A5A;
+      /* Enterprise Architecture */
+      --own-grc: #2B2B2B;
+      /* GRC */
+      --own-hr: #2E8B57;
+      /* HR */
+      --own-proc: #6B8E23;
+      /* Procurement */
+      --own-gmb: #111827;
+      /* Leadership */
+      --own-unassigned: #9AA4B2;
+      /* Unknown */
+
+      /* Foundation domain chip tints (domain-based coloring) */
+      --fnd-s2e: rgba(212, 5, 17, 0.08);
+      --fnd-grc: rgba(43, 43, 43, 0.08);
+      --fnd-itf: rgba(36, 87, 167, 0.08);
+      --fnd-ea: rgba(47, 58, 90, 0.08);
+      --fnd-da: rgba(0, 163, 199, 0.10);
+      --fnd-i2p: rgba(255, 204, 0, 0.18);
+      --fnd-trf: rgba(17, 24, 39, 0.06);
+      --fnd-r2r: rgba(91, 75, 138, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+      color: var(--ink);
+      background: var(--bg);
+      overflow: hidden;
+    }
+
+    .app {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      height: var(--header-h);
+      background: var(--dhl-red);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 18px;
+      gap: 12px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+      z-index: 50;
+      flex: 0 0 auto;
+    }
+
+    .topbar .title {
+      font-weight: 900;
+      letter-spacing: 0.2px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      white-space: nowrap;
+      min-width: 0;
+    }
+
+    .right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .search {
+      position: relative;
+      width: 420px;
+      max-width: 42vw;
+      min-width: 260px;
+    }
+
+    .search input {
+      width: 100%;
+      height: 36px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      outline: none;
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 750;
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    .search input::placeholder {
+      color: rgba(255, 255, 255, 0.78);
+      font-weight: 700;
+    }
+
+    .search input:focus {
+      box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.35);
+      border-color: rgba(255, 204, 0, 0.8);
+    }
+
+    .split {
+      position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .mapWrap {
+      position: absolute;
+      inset: 0 0 var(--deck-collapsed-h) 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      transition: inset 240ms ease;
+    }
+
+    .mapWrap.deckOpen {
+      inset: 0 0 var(--deck-expanded-h) 0;
+    }
+
+    .mapHeader {
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 4px 14px rgba(16, 24, 40, 0.06);
+      z-index: 20;
+      flex: 0 0 auto;
+    }
+
+    /* 6 steps */
+    .stageGrid {
+      display: grid;
+      grid-template-columns: var(--lane-label-w) repeat(6, minmax(190px, 1fr));
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .stageCorner {
+      padding: 10px 12px;
+      border-right: 1px solid var(--line);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .stageCorner .hint {
+      font-size: 11px;
+      font-weight: 900;
+      color: var(--muted);
+      line-height: 1.25;
+    }
+
+    .stageCell {
+      padding: 10px 10px 12px 10px;
+      border-right: 1px solid var(--line);
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      min-width: 0;
+    }
+
+    .stageCell:last-child {
+      border-right: none;
+    }
+
+    /* icon slot reserved */
+    .stepIcon {
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      border: 1px dashed rgba(16, 24, 40, 0.18);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(247, 248, 251, 0.85) 100%);
+      box-shadow: 0 10px 22px rgba(16, 24, 40, 0.06);
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(16, 24, 40, 0.35);
+      font-weight: 950;
+      font-size: 11px;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .stepIcon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .stepTxt {
+      min-width: 0;
+    }
+
+    .stageNo {
+      font-size: 11px;
+      font-weight: 950;
+      color: var(--dhl-red);
+      margin-bottom: 4px;
+    }
+
+    .stageName {
+      font-size: 13px;
+      font-weight: 950;
+      line-height: 1.15;
+      margin-bottom: 6px;
+    }
+
+    .stageVoice {
+      font-size: 11px;
+      font-weight: 850;
+      color: var(--muted);
+      line-height: 1.25;
+    }
+
+    .mapBody {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      padding: 8px 0;
+    }
+
+    .laneRow {
+      display: grid;
+      grid-template-columns: var(--lane-label-w) 1fr;
+      gap: 0;
+      align-items: stretch;
+      border-bottom: 1px solid rgba(16, 24, 40, 0.08);
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+
+    .laneRow.collapsed .laneGrid {
+      padding: 6px 10px 8px 10px;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .laneRow.collapsed .error {
+      margin: 0;
+      padding: 10px 12px;
+      box-shadow: none;
+      background: #fff;
+    }
+
+    .laneLabel {
+      position: sticky;
+      left: 0;
+      z-index: 10;
+      background: linear-gradient(180deg, #fff 0%, #F6F8FC 100%);
+      border-right: 1px solid var(--line);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .laneLabelTop {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .laneTitle {
+      font-size: 13px;
+      font-weight: 950;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .laneCode {
+      font-size: 11px;
+      font-weight: 950;
+      color: var(--dhl-red);
+      background: rgba(212, 5, 17, 0.08);
+      border: 1px solid rgba(212, 5, 17, 0.18);
+      border-radius: 999px;
+      padding: 3px 8px;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .laneDesc {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      line-height: 1.25;
+    }
+
+    .laneDesc .line1 {
+      font-size: 11px;
+      font-weight: 950;
+      color: var(--ink);
+    }
+
+    .laneDesc .line2 {
+      font-size: 11px;
+      font-weight: 850;
+      color: var(--muted);
+    }
+
+    .laneSub {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      line-height: 1.25;
+    }
+
+    .laneControls {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn {
+      height: 28px;
+      border-radius: 10px;
+      padding: 0 10px;
+      border: 1px solid rgba(16, 24, 40, 0.14);
+      background: #fff;
+      color: #1f2937;
+      font-size: 11px;
+      font-weight: 900;
+      cursor: pointer;
+      user-select: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      background: #FFF9E6;
+      border-color: rgba(255, 204, 0, 0.6);
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .laneGrid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(190px, 1fr));
+      gap: 10px;
+      padding: 8px 10px 10px 10px;
+      align-content: start;
+      border-left: 6px solid transparent;
+      border-radius: 0 18px 18px 0;
+      min-width: 0;
+    }
+
+    /* Lane themes */
+    .laneGrid.theme-l2c {
+      background: linear-gradient(180deg, var(--tint-l2c) 0%, rgba(255, 255, 255, 0.45) 90%);
+      border-left-color: rgba(212, 5, 17, 0.22);
+    }
+
+    .laneGrid.theme-o2d {
+      background: linear-gradient(180deg, var(--tint-o2d) 0%, rgba(255, 255, 255, 0.45) 90%);
+      border-left-color: rgba(255, 204, 0, 0.55);
+    }
+
+    .laneGrid.theme-d2o {
+      background: linear-gradient(180deg, var(--tint-d2o) 0%, rgba(255, 255, 255, 0.45) 90%);
+      border-left-color: rgba(120, 190, 140, 0.55);
+    }
+
+    /* STORY GRID (auto-fit vertically, computed height applied inline) */
+    .storyGrid {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(190px, 1fr));
+      gap: var(--story-gap);
+      padding: 2px 0 0 0;
+      min-width: 0;
+      align-items: start;
+    }
+
+    .stageStack {
+      display: flex;
+      flex-direction: column;
+      gap: var(--story-gap);
+      min-width: 0;
+    }
+
+    /* OPS Step 4 (Network Move) vertical scale-to-fit wrapper */
+    .scaleWrap {
+      min-width: 0;
+      overflow: hidden;
+      border-radius: 14px;
+    }
+
+    /* Continuous bar full width */
+    .continuousBar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+      padding: 6px 0 0 0;
+      min-width: 0;
+    }
+
+    /* Process Card (NO pills; ID + Title same row) */
+    .tile {
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+      padding: 5px 10px;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 14px;
+      background: #fff;
+      color: #111827;
+      border: 1px solid rgba(16, 24, 40, 0.12);
+      box-shadow: 0 10px 22px rgba(16, 24, 40, 0.08);
+      transition: transform 120ms ease, box-shadow 120ms ease;
+      overflow: hidden;
+      position: relative;
+      min-width: 0;
+      height: var(--story-row-h);
+    }
+
+    .tile::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      background: var(--own, #9aa4b2);
+      opacity: 0.95;
+    }
+
+    .tile:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 28px rgba(16, 24, 40, 0.12);
+    }
+
+    .tile.active {
+      border-color: rgba(255, 204, 0, 0.85);
+      box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.55), 0 16px 32px rgba(16, 24, 40, 0.14);
+    }
+
+    .tileMain {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-left: 4px;
+    }
+
+    .tileRow1 {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .tileIdText {
+      font-size: 11px;
+      font-weight: 980;
+      color: var(--dhl-red);
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .tileTitleText {
+      font-size: 12.5px;
+      font-weight: 950;
+      line-height: 1.2;
+      min-width: 0;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+
+    /* Long continuous tile spans entire width */
+    .tile.continuousFull {
+      flex: 1 1 auto;
+      height: auto;
+      min-height: calc(var(--story-row-h) + 10px);
+      padding-top: 12px;
+      padding-bottom: 12px;
+    }
+
+    .tile.continuousFull .tileTitleText {
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    /* L2 chain inside continuous L1 tile (DHL yellow chevrons, 2-line titles) */
+    .l2ChainWrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 6px;
+      min-width: 0;
+    }
+
+    .lvlTag {
+      display: inline-flex;
+      align-items: center;
+      height: 20px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 980;
+      color: var(--muted);
+      border: 1px solid rgba(16, 24, 40, 0.12);
+      background: rgba(255, 255, 255, 0.85);
+      width: fit-content;
+    }
+
+    .l2ChevChain {
+      display: flex;
+      gap: 8px;
+      overflow: hidden;
+      /* no horizontal slider */
+      overflow-y: hidden;
+      padding-bottom: 2px;
+      min-width: 0;
+      scrollbar-width: thin;
+    }
+
+    .l2ChevInner {
+      display: flex;
+      gap: 8px;
+      min-width: 0;
+      transform-origin: left center;
+    }
+
+    .l2ChevChain::-webkit-scrollbar {
+      display: none;
+    }
+
+    .l2ChevChain .l2ChevInner {
+      display: contents;
+    }
+
+    /* Keep the chevrons horizontal (the inner wrapper is created in JS) */
+    .l2ChevInner {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-width: max-content;
+    }
+
+    .l2Chev {
+      width: 100%;
+      height: 34px;
+      min-width: 0;
+      /* allow fit */
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 10px;
+      font-weight: 950;
+      color: #1f2937;
+      background: var(--dhl-yellow);
+      border: 1px solid rgba(212, 5, 17, 0.18);
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 10px 18px rgba(16, 24, 40, 0.06);
+      clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%, 18px 50%);
+    }
+
+    .l2Chev:hover {
+      background: #FFEB8A;
+      border-color: rgba(212, 5, 17, 0.28);
+    }
+
+    .l2ChevId {
+      color: var(--dhl-red);
+      font-weight: 980;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .l2ChevTitle {
+      min-width: 0;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      line-height: 1.15;
+    }
+
+    /* SUPPORT CHAINS (P2R / S2P / H2R): yellow chevron chain, L1-only */
+    .supportBlock {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    /* Compact support lane (used for P2R) */
+    .laneGrid.supportLane {
+      padding: 6px 10px 8px 10px;
+      gap: 8px;
+    }
+
+    .supportBlock.compact {
+      gap: 8px;
+    }
+
+    .supportBlock.compact .supportRow {
+      gap: 8px;
+    }
+
+    .supportBlock.compact .supportHeader {
+      padding: 5px 9px;
+      font-size: 10px;
+    }
+
+    .supportBlock.compact .chevChain {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      gap: 8px;
+      overflow: hidden;
+      /* no horizontal slider */
+      overflow-y: hidden;
+      padding-bottom: 2px;
+      scrollbar-width: thin;
+    }
+
+    .chevInner {
+      display: flex;
+      gap: 8px;
+      min-width: 0;
+      transform-origin: left center;
+    }
+
+    .supportBlock.compact .chev {
+      flex: 0 0 auto;
+      height: 34px;
+      min-width: 130px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 10px;
+      font-weight: 950;
+      color: #1f2937;
+      background: var(--dhl-yellow);
+      border: 1px solid rgba(212, 5, 17, 0.18);
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 10px 18px rgba(16, 24, 40, 0.06);
+      clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%, 18px 50%);
+      padding-left: 16px;
+      padding-right: 16px;
+      min-width: 0;
+    }
+
+
+    .chevChain {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      overflow: hidden;
+      /* no horizontal slider */
+      padding-bottom: 2px;
+    }
+
+    .chevInner {
+      width: 100%;
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(var(--chevcols, 8), minmax(0, 1fr));
+    }
+
+    .chev {
+      width: 100%;
+      height: 38px;
+      min-width: 0;
+      max-width: none;
+      padding: 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 10px;
+      font-weight: 950;
+      color: #1f2937;
+      background: var(--dhl-yellow);
+      /* align with L2C_08 */
+      border: 1px solid rgba(212, 5, 17, 0.18);
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 10px 18px rgba(16, 24, 40, 0.06);
+      clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%, 18px 50%);
+    }
+
+    .chev:hover {
+      background: #FFEB8A;
+      border-color: rgba(212, 5, 17, 0.28);
+    }
+
+    .chevId {
+      color: var(--dhl-red);
+      font-weight: 980;
+      white-space: nowrap;
+    }
+
+    .chevTitle {
+      min-width: 0;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      white-space: normal;
+      line-height: 1.15;
+    }
+
+    /* Foundation (2 x 4 fixed) */
+    .foundationGrid {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(220px, 1fr));
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid rgba(16, 24, 40, 0.10);
+      border-radius: 14px;
+      background: #fff;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .foundationChip {
+      height: 54px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(16, 24, 40, 0.12);
+      background: #F7F8FB;
+      font-size: 11px;
+      font-weight: 950;
+      color: #1f2937;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      user-select: none;
+      box-shadow: 0 10px 20px rgba(16, 24, 40, 0.05);
+      min-width: 0;
+    }
+
+    .foundationChip:hover {
+      border-color: rgba(255, 204, 0, 0.55);
+      background: #FFF9E6;
+    }
+
+    .foundationChip .left {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .foundationChip .code {
+      font-size: 10px;
+      font-weight: 980;
+      color: var(--dhl-red);
+      letter-spacing: 0.2px;
+    }
+
+    .foundationChip .name {
+      font-size: 11px;
+      font-weight: 950;
+      color: #111827;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 320px;
+    }
+
+    .foundationChip .cnt {
+      font-size: 11px;
+      font-weight: 980;
+      color: var(--muted);
+      border: 1px solid rgba(16, 24, 40, 0.12);
+      background: #fff;
+      padding: 4px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .fnd-s2e {
+      background: linear-gradient(180deg, var(--fnd-s2e) 0%, rgba(247, 248, 251, 0.9) 100%);
+    }
+
+    .fnd-grc {
+      background: linear-gradient(180deg, var(--fnd-grc) 0%, rgba(247, 248, 251, 0.9) 100%);
+    }
+
+    .fnd-itf {
+      background: linear-gradient(180deg, var(--fnd-itf) 0%, rgba(247, 248, 251, 0.9) 100%);
+    }
+
+    .fnd-ea {
+      background: linear-gradient(180deg, var(--fnd-ea) 0%, rgba(247, 248, 251, 0.9) 100%);
+    }
+
+    .fnd-da {
+      background: linear-gradient(180deg, var(--fnd-da) 0%, rgba(247, 248, 251, 0.9) 100%);
+    }
+
+    .fnd-i2p {
+      background: linear-gradient(180deg, var(--fnd-i2p) 0%, rgba(247, 248, 251, 0.9) 100%);
+    }
+
+    .fnd-trf {
+      background: linear-gradient(180deg, var(--fnd-trf) 0%, rgba(247, 248, 251, 0.9) 100%);
+    }
+
+    .fnd-r2r {
+      background: linear-gradient(180deg, var(--fnd-r2r) 0%, rgba(247, 248, 251, 0.9) 100%);
+    }
+
+    /* Drawer */
+    .drawerBackdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(16, 24, 40, 0.42);
+      display: none;
+      z-index: 999;
+    }
+
+    .drawerBackdrop.show {
+      display: block;
+    }
+
+    .drawer {
+      position: fixed;
+      top: calc(var(--header-h) + 12px);
+      right: 12px;
+      width: min(560px, 92vw);
+      height: min(72vh, 760px);
+      background: #fff;
+      border: 1px solid rgba(16, 24, 40, 0.14);
+      border-radius: 16px;
+      box-shadow: var(--shadow-2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 1000;
+    }
+
+    .drawerHead {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 12px;
+      background: #F7F8FB;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .drawerTitle {
+      font-size: 13px;
+      font-weight: 950;
+      margin: 0;
+      line-height: 1.15;
+    }
+
+    .drawerSub {
+      font-size: 11px;
+      font-weight: 850;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .drawerClose {
+      height: 30px;
+      padding: 0 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(16, 24, 40, 0.14);
+      background: #fff;
+      font-size: 11px;
+      font-weight: 950;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .drawerClose:hover {
+      background: #FFF9E6;
+      border-color: rgba(255, 204, 0, 0.6);
+    }
+
+    .drawerBody {
+      padding: 10px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .drawerSection {
+      border: 1px solid rgba(16, 24, 40, 0.10);
+      border-radius: 14px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .drawerSectionHead {
+      padding: 10px 10px;
+      background: #fff;
+      border-bottom: 1px solid rgba(16, 24, 40, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .drawerSectionTitle {
+      font-size: 12px;
+      font-weight: 950;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .drawerSectionCount {
+      font-size: 11px;
+      font-weight: 950;
+      color: var(--muted);
+      border: 1px solid rgba(16, 24, 40, 0.12);
+      background: #F7F8FB;
+      padding: 4px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .drawerList {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .drawerTile {
+      height: 64px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px 10px 14px;
+      cursor: pointer;
+      user-select: none;
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid rgba(16, 24, 40, 0.12);
+      box-shadow: 0 10px 20px rgba(16, 24, 40, 0.06);
+      overflow: hidden;
+      position: relative;
+      min-width: 0;
+    }
+
+    .drawerTile::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 8px;
+      background: var(--own, #9aa4b2);
+      opacity: 0.95;
+    }
+
+    .drawerTile:hover {
+      background: #FFF9E6;
+      border-color: rgba(255, 204, 0, 0.55);
+    }
+
+    .drawerTileMain {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-left: 4px;
+    }
+
+    .drawerTileRow1 {
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+      min-width: 0;
+    }
+
+    .drawerTileId {
+      font-size: 11px;
+      font-weight: 980;
+      color: var(--dhl-red);
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .drawerTileName {
+      font-size: 12.5px;
+      font-weight: 950;
+      line-height: 1.2;
+      margin: 0;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+
+    /* Tooltip: black bg, yellow title */
+    .tooltip {
+      position: fixed;
+      z-index: 2000;
+      width: min(var(--tooltipW), 92vw);
+      background: #0B1220;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      box-shadow: var(--shadow-2);
+      padding: 10px 10px;
+      display: none;
+      pointer-events: none;
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    .tooltip.show {
+      display: block;
+    }
+
+    .ttTop {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .ttTitle {
+      font-size: 12px;
+      font-weight: 980;
+      line-height: 1.2;
+      margin: 0;
+      color: var(--dhl-yellow);
+    }
+
+    .ttOwner {
+      font-size: 11px;
+      font-weight: 950;
+      border-radius: 999px;
+      padding: 4px 8px;
+      color: #0B1220;
+      background: var(--dhl-yellow);
+      white-space: nowrap;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+    }
+
+    .ttDesc {
+      font-size: 11px;
+      font-weight: 800;
+      color: rgba(255, 255, 255, 0.78);
+      line-height: 1.35;
+      margin: 0 0 8px 0;
+    }
+
+    .ttStats {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .ttPill {
+      font-size: 10px;
+      font-weight: 950;
+      border-radius: 999px;
+      padding: 4px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.06);
+      color: rgba(255, 255, 255, 0.90);
+      white-space: nowrap;
+    }
+
+    .error {
+      margin: 12px 14px;
+      padding: 12px 12px;
+      border-radius: 14px;
+      background: #fff;
+      border: 1px solid rgba(180, 35, 24, 0.22);
+      color: #b42318;
+      font-weight: 900;
+      box-shadow: var(--shadow);
+    }
+
+    /* Legend bar */
+    .legendBar {
+      height: var(--legend-h);
+      border-top: 1px solid rgba(16, 24, 40, 0.10);
+      background: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px;
+      overflow: hidden;
+    }
+
+    .legendTitle {
+      font-size: 11px;
+      font-weight: 950;
+      color: var(--muted);
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .legendItems {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      overflow: auto;
+      padding-bottom: 2px;
+      flex: 1 1 auto;
+      min-width: 0;
+      scrollbar-width: thin;
+    }
+
+    .ownerChip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(16, 24, 40, 0.12);
+      background: #F7F8FB;
+      font-size: 10px;
+      font-weight: 950;
+      color: #1f2937;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--dot, #999);
+      border: 1px solid rgba(0, 0, 0, 0.12);
+    }
+
+    /* Footer line */
+    .footerBar {
+      height: var(--footer-h);
+      background: #fff;
+      border-top: 1px solid rgba(16, 24, 40, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 14px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      overflow: hidden;
+    }
+
+    .footerBar .left {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+
+    .footerBar .right {
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    /* Deck content: L2 grid */
+    .deckL2Grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 10px;
+      align-items: start;
+      width: 100%;
+    }
+
+    .l2Block {
+      background: #fff;
+      border: 1px solid rgba(16, 24, 40, 0.12);
+      border-radius: 14px;
+      box-shadow: 0 10px 20px rgba(16, 24, 40, 0.06);
+      padding: 10px;
+      min-width: 0;
+    }
+
+    .l2Head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(16, 24, 40, 0.08);
+      margin-bottom: 8px;
+    }
+
+    .l2Id {
+      font-size: 11px;
+      font-weight: 980;
+      color: var(--dhl-red);
+    }
+
+    .l2Title {
+      font-size: 13px;
+      font-weight: 980;
+      margin: 0;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .l2OwnerPill {
+      font-size: 10px;
+      font-weight: 980;
+      border-radius: 999px;
+      padding: 5px 8px;
+      border: 1px solid rgba(255, 204, 0, 0.55);
+      background: #FFF9E6;
+      color: #7a5a00;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+
+    .l3Item {
+      border-left: 3px solid rgba(16, 24, 40, 0.18);
+      background: #FBFCFE;
+      border-radius: 10px;
+      padding: 8px 10px;
+      border: 1px solid rgba(16, 24, 40, 0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .l3Meta {
+      font-size: 10px;
+      font-weight: 950;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .l3Name {
+      font-size: 12px;
+      font-weight: 850;
+      margin: 0;
+      line-height: 1.25;
+      color: #111827;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 980px) {
+      :root {
+        --lane-label-w: 260px;
+      }
+
+      .search {
+        width: 320px;
+      }
+
+      .foundationGrid {
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+      }
+
+      .deckL2Grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+
+      .laneGrid {
+        grid-template-columns: repeat(3, minmax(180px, 1fr));
+      }
+
+      .stageGrid {
+        grid-template-columns: var(--lane-label-w) repeat(3, minmax(180px, 1fr));
+      }
+
+      .storyGrid {
+        grid-template-columns: repeat(3, minmax(180px, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      :root {
+        --lane-label-w: 220px;
+      }
+
+      .search {
+        width: 240px;
+        min-width: 200px;
+      }
+
+      .stepIcon {
+        display: none;
+      }
+
+      .foundationGrid {
+        grid-template-columns: 1fr;
+      }
+
+      .deckL2Grid {
+        grid-template-columns: 1fr;
+      }
+
+      .laneGrid {
+        grid-template-columns: 1fr;
+      }
+
+      .stageGrid {
+        grid-template-columns: var(--lane-label-w) repeat(1, minmax(180px, 1fr));
+      }
+
+      .storyGrid {
+        grid-template-columns: repeat(1, minmax(180px, 1fr));
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="title">
+        <span>DHL eCommerce · Customer Journey Map</span>
+      </div>
+      <div class="right">
+        <div class="search">
+          <input id="searchInput" placeholder="Search ID (Enter)… e.g., O2D_10" autocomplete="off" />
+        </div>
+      </div>
+    </div>
+
+    <div class="split">
+      <div id="mapWrap" class="mapWrap">
+        <div class="mapHeader">
+          <div class="stageGrid" id="stageHeader"></div>
+        </div>
+        <div class="mapBody" id="mapBody"></div>
+        <div id="errBox" class="error" style="display:none;"></div>
+      </div>
+
+      <!-- Deck -->
+      <div id="deck"
+        style="position:absolute;left:0;right:0;bottom:0;height:var(--deck-collapsed-h);background:#fff;border-top:3px solid var(--dhl-yellow);box-shadow:0 -12px 30px rgba(16,24,40,0.12);display:flex;flex-direction:column;min-height:0;transition:height 240ms ease;z-index:40;">
+        <!-- Ownership legend -->
+        <div class="legendBar">
+          <div class="legendTitle">Ownership legend</div>
+          <div id="ownerLegendFooter" class="legendItems"></div>
+        </div>
+
+        <!-- Footer line -->
+        <div class="footerBar">
+          <div class="left">DHL eCommerce · Customer Journey Blueprint · 2026</div>
+          <div class="right">Serhat Kut, PhD</div>
+        </div>
+
+        <div id="deckHandle"
+          style="height:48px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 14px;cursor:pointer;user-select:none;">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+            <div
+              style="width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(212,5,17,0.10);border:1px solid rgba(212,5,17,0.18);font-weight:950;color:var(--dhl-red);flex:0 0 auto;">
+              ≡</div>
+            <div id="deckHandleTitle"
+              style="font-size:12px;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;">
+              Select an L1 card to view details</div>
+          </div>
+          <div id="deckHint"
+            style="font-size:11px;font-weight:850;color:var(--muted);white-space:nowrap;flex:0 0 auto;">▲ Expand</div>
+        </div>
+        <div id="deckBody"
+          style="display:none;border-top:1px solid var(--line);padding:12px 14px 14px 14px;overflow:auto;min-height:0;flex-direction:column;gap:12px;">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer -->
+  <div id="drawerBackdrop" class="drawerBackdrop" aria-hidden="true"></div>
+  <div id="drawer" class="drawer" style="display:none;" role="dialog" aria-modal="true" aria-label="Lane Drawer">
+    <div class="drawerHead">
+      <div>
+        <div id="drawerTitle" class="drawerTitle">More items</div>
+        <div id="drawerSub" class="drawerSub"></div>
+      </div>
+      <button id="drawerClose" class="drawerClose">Close</button>
+    </div>
+    <div id="drawerBody" class="drawerBody"></div>
+  </div>
+
+  <!-- Tooltip -->
+  <div id="tooltip" class="tooltip" aria-hidden="true"></div>
+
+  <script>
+    /***********************
+     * CUSTOMER JOURNEY (6 STEPS)
+     ***********************/
+    const STAGES = [
+      { no: 1, name: "Awareness & Plan", voice: "I discover products, services and delivery options" },
+      { no: 2, name: "Offer → Onboard", voice: "I request an offer, agree terms, open an account and integrate" },
+      { no: 3, name: "Booking & Collect", voice: "I create shipments and hand over parcels for pickup / drop-off" },
+      { no: 4, name: "Network Move", voice: "My shipment moves: export, linehaul, import and sorting to next node" },
+      { no: 5, name: "Last Mile Delivery", voice: "I receive delivery (home/OOH) and confirm the outcome" },
+      { no: 6, name: "Post-Shipment", voice: "I pay, reconcile invoices, and return if needed" },
+    ];
+
+    /***********************
+     * Lane config
+     ***********************/
+    const LANES = [
+      {
+        key: "COMM", label: "Commercial", l0Codes: ["L2C"], laneCode: "L2C",
+        desc1: "Lead-to-Cash",
+        desc2: "Lead → Offer → Contract → Billing",
+        sub: "Top Priority",
+        renderMode: "story", defaultCollapsed: false, theme: "l2c"
+      },
+      {
+        key: "OPS", label: "Operations", l0Codes: ["O2D"], laneCode: "O2D",
+        desc1: "Order-to-Delivery",
+        desc2: "Pickup → Sort → Network Move → Last Mile",
+        sub: "Core Logistics",
+        renderMode: "story", defaultCollapsed: false, theme: "o2d"
+      },
+      {
+        key: "DES", label: "Design", l0Codes: ["D2O"], laneCode: "D2O",
+        desc1: "Design-to-Operate",
+        desc2: "Network → Product → Standards → Enablement",
+        sub: "Network & Product Design",
+        renderMode: "supportChains", defaultCollapsed: false,
+        supportL0s: [{ l0: "D2O", title: "Design-to-Operate (D2O)" }]
+      },
+      // Support lanes (L1 only): chevron chain, minimal vertical
+      {
+        key: "RESO", label: "Resolution", l0Codes: ["P2R"], laneCode: "P2R",
+        desc1: "Problem-to-Resolution", desc2: "Detect → Triage → Resolve → Recover",
+        sub: "Issue Management",
+        renderMode: "supportChains", defaultCollapsed: false,
+        supportL0s: [{ l0: "P2R", title: "Problem-to-Resolution (P2R)" }]
+      },
+      {
+        key: "RSRC", label: "Resources", l0Codes: ["S2P", "H2R"], laneCode: "S2P & H2R",
+        desc1: "Sourcing & People", desc2: "Source-to-Pay + Hire-to-Retire",
+        sub: "Sourcing & HR",
+        renderMode: "supportChains", defaultCollapsed: false,
+        supportL0s: [
+          { l0: "S2P", title: "Source-to-Pay (S2P)" },
+          { l0: "H2R", title: "Hire-to-Retire (H2R)" }
+        ]
+      },
+
+      // Foundation (S2P/H2R removed) -> 2x4 fixed
+      {
+        key: "FND",
+        label: "Foundation",
+        l0Codes: ["S2E", "GRC", "ITF", "EA_PM", "DA", "I2P", "TRF", "R2R"],
+        laneCode: "S2E, GRC, IT, EA, DA",
+        desc1: "Strategy & Enablers",
+        desc2: "Governance · Platforms · Data · Architecture",
+        sub: "Strategy & Enablers",
+        renderMode: "foundation2x4",
+        defaultCollapsed: false
+      }
+    ];
+
+    const FOUNDATION_LABELS = {
+      "S2E": "Strategy & Execution",
+      "GRC": "Governance, Risk & Compliance",
+      "ITF": "IT Foundation",
+      "EA_PM": "Enterprise Architecture & Portfolio",
+      "DA": "Data & AI",
+      "I2P": "Innovation to Product",
+      "TRF": "Transformation",
+      "R2R": "Record to Report"
+    };
+
+    const FOUNDATION_CLASS = {
+      "S2E": "fnd-s2e", "GRC": "fnd-grc", "ITF": "fnd-itf", "EA_PM": "fnd-ea",
+      "DA": "fnd-da", "I2P": "fnd-i2p", "TRF": "fnd-trf", "R2R": "fnd-r2r"
+    };
+
+    // Continuous rule updated to 6-step: span Step 3 → Step 6
+    const SPAN_RULES = [
+      { match: { l0: "L2C", l1: "L2C_08" }, span: { from: 3, to: 6 } }
+    ];
+
+    /***********************
+     * Utils
+     ***********************/
+    const $ = (sel) => document.querySelector(sel);
+    const esc = (s) => String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+    function parseInfo(name) {
+      if (!name) return { id: "", name: "" };
+      const parts = String(name).split(":");
+      const id = parts[0].trim();
+      const nm = parts.slice(1).join(":").trim() || id;
+      return { id, name: nm };
+    }
+    function safeChildren(n) { return (n && Array.isArray(n.children)) ? n.children : []; }
+
+    function getL0Map(root) {
+      const m = new Map();
+      safeChildren(root).forEach(l0 => {
+        const inf = parseInfo(l0.name);
+        if (inf.id) m.set(inf.id, l0);
+      });
+      return m;
+    }
+    function extractTrailingNumber(id) {
+      const m = String(id || "").match(/_(\d+)\s*$/);
+      return m ? Number(m[1]) : null;
+    }
+    function getSpanFor(l0Id, l1Id) {
+      for (const r of SPAN_RULES) {
+        const m = r.match || {};
+        const okL0 = (m.l0 == null) || (m.l0 === l0Id);
+        const okL1 = (m.l1 == null) || (m.l1 === l1Id);
+        if (okL0 && okL1) return r.span;
+      }
+      return null;
+    }
+
+    /***********************
+     * Ownership categories
+     ***********************/
+    const OWNER_ORDER = [
+      "Commercial & Sales", "Operations", "Finance", "IT", "Data", "Enterprise Architecture", "GRC", "HR", "Procurement", "GMB / Leadership", "Unassigned"
+    ];
+
+    function normalizeOwner(owner) {
+      const o = String(owner || "").trim();
+      if (!o) return "Unassigned";
+      return o;
+    }
+
+    function ownerCategory(ownerRaw) {
+      const o = normalizeOwner(ownerRaw).toLowerCase();
+      if (o.includes("commercial") || o.includes("sales") || o.includes("customer")) return "Commercial & Sales";
+      if (o.includes("operation") || o.includes("ops") || o.includes("network") || o.includes("transport") || o.includes("hub") || o.includes("last mile")) return "Operations";
+      if (o.includes("finance") || o.includes("billing") || o.includes("accounting") || o.includes("controlling") || o.includes("treasury")) return "Finance";
+      if (o.includes("procure") || o.includes("sourcing") || o.includes("vendor") || o.includes("supplier")) return "Procurement";
+      if (o.includes("human") || o.includes("people") || o.includes("hr") || o.includes("talent")) return "HR";
+      if (o.includes("grc") || o.includes("risk") || o.includes("compliance") || o.includes("audit") || o.includes("privacy") || o.includes("security")) return "GRC";
+      if (o.includes("enterprise architecture") || o.includes("architecture") || o.includes("ea_") || o.includes("portfolio")) return "Enterprise Architecture";
+      if (o.includes("data") || o.includes("ai") || o.includes("analytics") || o.includes("bi")) return "Data";
+      if (o === "it" || o.includes("it ") || o.includes(" platform") || o.includes("application") || o.includes("integration") || o.includes("infra")) return "IT";
+      if (o.includes("gmb") || o.includes("ceo") || o.includes("cio") || o.includes("cfo") || o.includes("leadership") || o.includes("board")) return "GMB / Leadership";
+      return "Unassigned";
+    }
+
+    function categoryColor(cat) {
+      const cs = getComputedStyle(document.documentElement);
+      switch (cat) {
+        case "Commercial & Sales": return cs.getPropertyValue("--own-commercial").trim();
+        case "Operations": return cs.getPropertyValue("--own-ops").trim();
+        case "Finance": return cs.getPropertyValue("--own-finance").trim();
+        case "IT": return cs.getPropertyValue("--own-it").trim();
+        case "Data": return cs.getPropertyValue("--own-data").trim();
+        case "Enterprise Architecture": return cs.getPropertyValue("--own-ea").trim();
+        case "GRC": return cs.getPropertyValue("--own-grc").trim();
+        case "HR": return cs.getPropertyValue("--own-hr").trim();
+        case "Procurement": return cs.getPropertyValue("--own-proc").trim();
+        case "GMB / Leadership": return cs.getPropertyValue("--own-gmb").trim();
+        default: return cs.getPropertyValue("--own-unassigned").trim();
+      }
+    }
+
+    /***********************
+     * Stage mapping (6 steps)
+     ***********************/
+    function colForL1(l0Id, l1Node) {
+      const { id: l1Id, name: l1Name } = parseInfo(l1Node.name);
+      const n = extractTrailingNumber(l1Id);
+
+      // L2C (6 steps)
+      // 1 Awareness, 2 Offer+Onboard, 3 Booking, 4 Network Move, 5 Last Mile, 6 Post
+      if (l0Id === "L2C") {
+        if (n === 1) return 1;
+        if (n === 2) return 2;
+        if (n === 3) return 2;
+        if (n === 4) return 2;
+        if (n === 5) return 3;
+        if (n === 6) return 6;
+        if (n === 7) return 6;
+        if (n === 8) return 5; // continuous service still anchored around delivery experience
+        return 3;
+      }
+
+      // O2D (6 steps)
+      // 3 Booking/Collect, 4 Network Move, 5 Last Mile, 6 Post
+      if (l0Id === "O2D") {
+        if (n === 1) return 3;
+        if (n === 2) return 3;
+        if (n === 3) return 3;
+        if (n === 4) return 4;
+        if (n === 5) return 4;
+        if (n === 6) return 4;
+        if (n === 7) return 4;
+        if (n === 8) return 4;
+        if (n === 9) return 5;
+        if (n === 10) return 5; // FIX: move to Last Mile step
+        if (n === 11) return 5; // FIX: move to Last Mile step
+        if (n === 12) return 6;
+        return 4;
+      }
+
+      // D2O (6 steps)
+      if (l0Id === "D2O") {
+        if (n === 1) return 2;
+        if (n === 2) return 2;
+        if (n === 3) return 2;
+        if (n === 4) return 3;
+        if (n === 5) return 3;
+        if (n === 6) return 4;
+        if (n === 7) return 4;
+        if (n === 8) return 6;
+        return 2;
+      }
+
+      // Fallback heuristic
+      const nm = (l1Name || "").toLowerCase();
+      if (nm.includes("strategy") || nm.includes("governance")) return 1;
+      if (nm.includes("offer") || nm.includes("contract") || nm.includes("onboard") || nm.includes("account")) return 2;
+      if (nm.includes("book") || nm.includes("collect") || nm.includes("pickup")) return 3;
+      if (nm.includes("linehaul") || nm.includes("sort") || nm.includes("import") || nm.includes("export") || nm.includes("transit")) return 4;
+      if (nm.includes("last mile") || nm.includes("delivery")) return 5;
+      if (nm.includes("billing") || nm.includes("invoice") || nm.includes("return")) return 6;
+      return 3;
+    }
+
+    function stageChipText(l0Id, l1Id, l1Node) {
+      const span = getSpanFor(l0Id, l1Id);
+      if (span) return `S${span.from}–S${span.to}`;
+      const c = colForL1(l0Id, l1Node);
+      return `S${c}`;
+    }
+
+    /***********************
+     * Tooltip
+     ***********************/
+    const tooltip = $("#tooltip");
+    let ttTimer = null;
+
+    function truncate(s, n = 260) {
+      const t = String(s || "").trim();
+      if (!t) return "";
+      return t.length > n ? t.slice(0, n - 1) + "…" : t;
+    }
+    function countL2L3(l1Node) {
+      const l2s = safeChildren(l1Node);
+      let l3Count = 0;
+      for (const l2 of l2s) l3Count += safeChildren(l2).length;
+      return { l2: l2s.length, l3: l3Count };
+    }
+    function showTooltipNear(x, y, html) {
+      tooltip.innerHTML = html;
+      tooltip.classList.add("show");
+      tooltip.setAttribute("aria-hidden", "false");
+
+      const pad = 14;
+      const rect = tooltip.getBoundingClientRect();
+      let left = x + 14;
+      let top = y + 14;
+
+      if (left + rect.width + pad > window.innerWidth) left = x - rect.width - 14;
+      if (top + rect.height + pad > window.innerHeight) top = y - rect.height - 14;
+
+      tooltip.style.left = Math.max(pad, left) + "px";
+      tooltip.style.top = Math.max(pad, top) + "px";
+    }
+    function hideTooltip() {
+      tooltip.classList.remove("show");
+      tooltip.setAttribute("aria-hidden", "true");
+    }
+
+    /***********************
+     * State
+     ***********************/
+    let ROOT = null;
+    let L0MAP = null;
+    const laneCollapsed = {};
+    const OWNER_COUNTS = new Map();
+
+    /***********************
+     * Render header
+     ***********************/
+    function tryLoadStepIcons() {
+      const base = "icons";
+      document.querySelectorAll(".stepIcon").forEach(el => {
+        const step = el.getAttribute("data-step");
+        const img = new Image();
+        img.onload = () => { el.innerHTML = ""; el.appendChild(img); };
+        img.onerror = () => { };
+        img.src = `${base}/step-${step}.png`;
+      });
+    }
+
+    function renderStageHeader() {
+      const wrap = $("#stageHeader");
+      wrap.innerHTML = "";
+
+      const corner = document.createElement("div");
+      corner.className = "stageCorner";
+      corner.innerHTML = `
+        <div class="hint">
+          <div style="font-weight:950;color:var(--ink);">Swimlanes</div>
+          <div>Hover for quick details · Click for deck</div>
+        </div>
+      `;
+      wrap.appendChild(corner);
+
+      STAGES.forEach(s => {
+        const cell = document.createElement("div");
+        cell.className = "stageCell";
+        cell.innerHTML = `
+          <div class="stepIcon" data-step="${esc(s.no)}">ICON</div>
+          <div class="stepTxt">
+            <div class="stageNo">Step ${esc(s.no)}</div>
+            <div class="stageName">${esc(s.name)}</div>
+            <div class="stageVoice">${esc(s.voice)}</div>
+          </div>
+        `;
+        wrap.appendChild(cell);
+      });
+
+      tryLoadStepIcons();
+    }
+
+    function renderOwnerLegendFooter() {
+      const el = document.getElementById("ownerLegendFooter");
+      if (!el) return;
+      el.innerHTML = "";
+      for (const cat of OWNER_ORDER) {
+        const cnt = OWNER_COUNTS.get(cat) || 0;
+        if (cnt === 0) continue;
+        const chip = document.createElement("div");
+        chip.className = "ownerChip";
+        chip.innerHTML = `<span class="dot" style="--dot:${esc(categoryColor(cat))}"></span>${esc(cat)} <span style="opacity:.7;">(${cnt})</span>`;
+        el.appendChild(chip);
+      }
+    }
+
+    /***********************
+     * Drawer
+     ***********************/
+    const drawer = $("#drawer");
+    const drawerBackdrop = $("#drawerBackdrop");
+    const drawerTitle = $("#drawerTitle");
+    const drawerSub = $("#drawerSub");
+    const drawerBody = $("#drawerBody");
+    const drawerClose = $("#drawerClose");
+
+    function openDrawer(ctx) {
+      drawerTitle.textContent = ctx.title || "Items";
+      drawerSub.textContent = ctx.subtitle || "";
+      drawerBody.innerHTML = "";
+
+      (ctx.sections || []).forEach(sec => {
+        const section = document.createElement("div");
+        section.className = "drawerSection";
+        section.innerHTML = `
+          <div class="drawerSectionHead">
+            <div class="drawerSectionTitle">${esc(sec.title || "")}</div>
+            <div class="drawerSectionCount">${esc(sec.countText || "")}</div>
+          </div>
+          <div class="drawerList"></div>
+        `;
+        const list = section.querySelector(".drawerList");
+        (sec.items || []).forEach(it => list.appendChild(buildDrawerTile(it)));
+        drawerBody.appendChild(section);
+      });
+
+      drawer.style.display = "flex";
+      drawerBackdrop.classList.add("show");
+      drawerBackdrop.setAttribute("aria-hidden", "false");
+    }
+    function closeDrawer() {
+      drawer.style.display = "none";
+      drawerBackdrop.classList.remove("show");
+      drawerBackdrop.setAttribute("aria-hidden", "true");
+    }
+    drawerClose.addEventListener("click", closeDrawer);
+    drawerBackdrop.addEventListener("click", closeDrawer);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+
+    /***********************
+     * Deck
+     ***********************/
+    const deck = $("#deck");
+    const deckHandle = $("#deckHandle");
+    const deckHandleTitle = $("#deckHandleTitle");
+    const deckHint = $("#deckHint");
+    const deckBody = $("#deckBody");
+    const mapWrap = $("#mapWrap");
+
+    function setDeckOpen(open) {
+      if (open) {
+        deck.style.height = getComputedStyle(document.documentElement).getPropertyValue("--deck-expanded-h");
+        mapWrap.classList.add("deckOpen");
+        deckBody.style.display = "flex";
+        deckHint.textContent = "▼ Collapse";
+      } else {
+        deck.style.height = getComputedStyle(document.documentElement).getPropertyValue("--deck-collapsed-h");
+        mapWrap.classList.remove("deckOpen");
+        deckBody.style.display = "none";
+        deckHint.textContent = "▲ Expand";
+      }
+    }
+    deckHandle.addEventListener("click", () => setDeckOpen(deckBody.style.display === "none"));
+
+    function highlightActiveTile(l0Id, l1Id) {
+      document.querySelectorAll(".tile").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(`.tile[data-l0="${CSS.escape(l0Id)}"][data-l1="${CSS.escape(l1Id)}"]`).forEach(t => t.classList.add("active"));
+    }
+
+    function cssSafeId(s) {
+      return String(s || "").replaceAll(/[^a-zA-Z0-9\-_:.]/g, "_");
+    }
+
+    function selectL1(l0Id, l1Node, focusL2Id = null) {
+      const l0Node = L0MAP.get(l0Id);
+      const l0Info = parseInfo(l0Node?.name);
+      const l1Info = parseInfo(l1Node?.name);
+
+      deckHandleTitle.textContent = `${l1Info.id} — ${l1Info.name}`;
+
+      const ownerRaw = (l1Node?.owner || l0Node?.owner || "Unassigned");
+      const cat = ownerCategory(ownerRaw);
+      const desc = (l1Node?.description || "");
+
+      const l2s = safeChildren(l1Node).map(l2 => {
+        const i2 = parseInfo(l2.name);
+        const l3s = safeChildren(l2).map(l3 => {
+          const i3 = parseInfo(l3.name);
+          return { id: i3.id, name: i3.name, node: l3 };
+        });
+        return { id: i2.id, name: i2.name, node: l2, l3s };
+      });
+
+      deckBody.innerHTML = `
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;justify-content:space-between;">
+          <div style="min-width:280px;flex:1 1 520px;">
+            <p style="font-size:16px;font-weight:980;margin:0 0 4px 0;line-height:1.15;">${esc(l1Info.id)} · ${esc(l1Info.name)}</p>
+            <p style="margin:0;font-size:12px;color:var(--muted);font-weight:750;line-height:1.4;max-width:1100px;">${esc(desc || "No description available.")}</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;align-items:center;flex:0 0 auto;">
+            <span style="font-size:11px;font-weight:900;border-radius:999px;padding:6px 10px;border:1px solid rgba(16,24,40,0.14);background:rgba(212,5,17,0.08);border-color:rgba(212,5,17,0.18);color:var(--dhl-red);white-space:nowrap;">${esc(l0Info.id || l0Id)} · L0</span>
+            <span style="font-size:11px;font-weight:950;border-radius:999px;padding:6px 10px;border:1px solid rgba(16,24,40,0.14);background:#111827;color:#fff;white-space:nowrap;">Owner: ${esc(cat)}</span>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="font-size:12px;font-weight:950;color:var(--ink);">L2 Sub-processes → L3 Activities</div>
+          <div style="font-size:11px;font-weight:850;color:var(--muted);white-space:nowrap;">L3 is always visible</div>
+        </div>
+
+        <div id="l2Grid" class="deckL2Grid"></div>
+      `;
+
+      const grid = document.getElementById("l2Grid");
+      if (!l2s.length) {
+        grid.innerHTML = `<div style="padding:14px 12px;color:var(--muted);font-weight:800;font-size:12px;">No L2 sub-processes found for this L1.</div>`;
+      } else {
+        for (const l2 of l2s) {
+          const l2OwnerRaw = (l2.node?.owner || ownerRaw || "Unassigned");
+          const l2Cat = ownerCategory(l2OwnerRaw);
+
+          const block = document.createElement("div");
+          block.className = "l2Block";
+          block.id = `l2-${cssSafeId(l2.id)}`;
+
+          block.innerHTML = `
+            <div class="l2Head">
+              <div style="min-width:0;">
+                <div class="l2Id">${esc(l2.id)}</div>
+                <p class="l2Title" title="${esc(l2.name)}">${esc(l2.name)}</p>
+              </div>
+              <div class="l2OwnerPill">L2 Owner: ${esc(l2Cat)}</div>
+            </div>
+            <div class="l3List" style="display:flex;flex-direction:column;gap:6px;"></div>
+          `;
+
+          const list = block.querySelector(".l3List");
+          if (!l2.l3s.length) {
+            const empty = document.createElement("div");
+            empty.style.cssText = "padding:10px;color:var(--muted);font-weight:800;font-size:12px;";
+            empty.textContent = "No L3 activities.";
+            list.appendChild(empty);
+          } else {
+            for (const x of l2.l3s) {
+              const item = document.createElement("div");
+              item.className = "l3Item";
+              item.innerHTML = `
+                <div class="l3Meta">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">${esc(x.id)}</span>
+                  <span style="opacity:.85;white-space:nowrap;">${esc(l2Cat)}</span>
+                </div>
+                <p class="l3Name" title="${esc(x.name)}">${esc(x.name)}</p>
+              `;
+              list.appendChild(item);
+            }
+          }
+          grid.appendChild(block);
+        }
+      }
+
+      setDeckOpen(true);
+
+      if (focusL2Id) {
+        requestAnimationFrame(() => {
+          const el = document.getElementById(`l2-${cssSafeId(focusL2Id)}`);
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    }
+
+    /***********************
+     * Tiles
+     ***********************/
+    function buildTile(it) {
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      tile.dataset.l0 = it.l0Id;
+      tile.dataset.l1 = it.l1Id;
+
+      const ownerRaw = it.owner || it.l0Owner || "Unassigned";
+      const cat = ownerCategory(ownerRaw);
+      tile.style.setProperty("--own", categoryColor(cat));
+
+      tile.innerHTML = `
+        <div class="tileMain">
+          <div class="tileRow1">
+            <span class="tileIdText">${esc(it.l1Id)}</span>
+            <span class="tileTitleText" title="${esc(it.l1Name)}">${esc(it.l1Name)}</span>
+          </div>
+        </div>
+      `;
+
+      tile.addEventListener("click", () => {
+        selectL1(it.l0Id, it.l1Node);
+        highlightActiveTile(it.l0Id, it.l1Id);
+        closeDrawer();
+        hideTooltip();
+      });
+
+      tile.addEventListener("mouseenter", (e) => {
+        if (ttTimer) clearTimeout(ttTimer);
+        const { l2, l3 } = countL2L3(it.l1Node);
+        const desc = truncate(it.l1Node?.description || "");
+        const chip = stageChipText(it.l0Id, it.l1Id, it.l1Node);
+
+        ttTimer = setTimeout(() => {
+          const html = `
+            <div class="ttTop">
+              <p class="ttTitle">${esc(it.l1Id)} · ${esc(it.l1Name)}</p>
+              <span class="ttOwner">${esc(cat)}</span>
+            </div>
+            <p class="ttDesc">${esc(desc || "No description available.")}</p>
+            <div class="ttStats">
+              <span class="ttPill">L0: ${esc(it.l0Id)}</span>
+              <span class="ttPill">L2: ${esc(l2)}</span>
+              <span class="ttPill">L3: ${esc(l3)}</span>
+              <span class="ttPill">Stage: ${esc(chip)}</span>
+            </div>
+          `;
+          showTooltipNear(e.clientX, e.clientY, html);
+        }, 140);
+      });
+
+      tile.addEventListener("mousemove", (e) => {
+        if (!tooltip.classList.contains("show")) return;
+        showTooltipNear(e.clientX, e.clientY, tooltip.innerHTML);
+      });
+
+      tile.addEventListener("mouseleave", () => {
+        if (ttTimer) clearTimeout(ttTimer);
+        hideTooltip();
+      });
+
+      return tile;
+    }
+
+    function buildDrawerTile(it) {
+      const tile = document.createElement("div");
+      tile.className = "drawerTile";
+
+      const ownerRaw = it.owner || it.l0Owner || "Unassigned";
+      const cat = ownerCategory(ownerRaw);
+      tile.style.setProperty("--own", categoryColor(cat));
+
+      tile.innerHTML = `
+        <div class="drawerTileMain">
+          <div class="drawerTileRow1">
+            <span class="drawerTileId">${esc(it.l1Id)}</span>
+            <p class="drawerTileName" title="${esc(it.l1Name)}">${esc(it.l1Name)}</p>
+          </div>
+        </div>
+      `;
+
+      tile.addEventListener("click", () => {
+        selectL1(it.l0Id, it.l1Node);
+        highlightActiveTile(it.l0Id, it.l1Id);
+        closeDrawer();
+        hideTooltip();
+      });
+
+      tile.addEventListener("mouseenter", (e) => {
+        if (ttTimer) clearTimeout(ttTimer);
+        const { l2, l3 } = countL2L3(it.l1Node);
+        const desc = truncate(it.l1Node?.description || "");
+        const chip = stageChipText(it.l0Id, it.l1Id, it.l1Node);
+
+        ttTimer = setTimeout(() => {
+          const html = `
+            <div class="ttTop">
+              <p class="ttTitle">${esc(it.l1Id)} · ${esc(it.l1Name)}</p>
+              <span class="ttOwner">${esc(cat)}</span>
+            </div>
+            <p class="ttDesc">${esc(desc || "No description available.")}</p>
+            <div class="ttStats">
+              <span class="ttPill">L0: ${esc(it.l0Id)}</span>
+              <span class="ttPill">L2: ${esc(l2)}</span>
+              <span class="ttPill">L3: ${esc(l3)}</span>
+              <span class="ttPill">Stage: ${esc(chip)}</span>
+            </div>
+          `;
+          showTooltipNear(e.clientX, e.clientY, html);
+        }, 140);
+      });
+      tile.addEventListener("mousemove", (e) => {
+        if (!tooltip.classList.contains("show")) return;
+        showTooltipNear(e.clientX, e.clientY, tooltip.innerHTML);
+      });
+      tile.addEventListener("mouseleave", () => {
+        if (ttTimer) clearTimeout(ttTimer);
+        hideTooltip();
+      });
+
+      return tile;
+    }
+
+    function buildContinuousFull(it) {
+      const tile = document.createElement("div");
+      tile.className = "tile continuousFull";
+      tile.dataset.l0 = it.l0Id;
+      tile.dataset.l1 = it.l1Id;
+
+      const ownerRaw = it.owner || it.l0Owner || "Unassigned";
+      const cat = ownerCategory(ownerRaw);
+      tile.style.setProperty("--own", categoryColor(cat));
+
+      const l2Nodes = safeChildren(it.l1Node);
+      const l2Infos = l2Nodes.map(n => ({ ...parseInfo(n.name), node: n })).filter(x => x.id);
+
+      tile.innerHTML = `
+        <div class="tileMain">
+          <div class="tileRow1">
+            <span class="tileIdText">${esc(it.l1Id)}</span>
+            <span class="tileTitleText" title="${esc(it.l1Name)}">${esc(it.l1Name)}</span>
+          </div>
+          <div class="l2ChainWrap">
+            <div class="l2ChevChain"><div class="l2ChevInner"></div></div>
+          </div>
+        </div>
+      `;
+
+      const chainWrap = tile.querySelector(".l2ChevChain");
+      const chain = tile.querySelector(".l2ChevInner");
+      if (chainWrap) chainWrap.style.setProperty("--l2cols", String(Math.min(l2Infos.length || 1, 9)));
+      l2Infos.forEach(l2 => {
+        const chev = document.createElement("div");
+        chev.className = "l2Chev";
+        chev.title = `${l2.id} · ${l2.name}`;
+        chev.innerHTML = `<span class="l2ChevId">${esc(l2.id)}</span><span class="l2ChevTitle">${esc(l2.name)}</span>`;
+
+        // L2 hover tooltip (prevent parent L1 tooltip)
+        chev.addEventListener("mouseenter", (e) => {
+          e.stopPropagation();
+          if (ttTimer) clearTimeout(ttTimer);
+
+          const l2Node = l2.node;
+          const l3Count = safeChildren(l2Node).length;
+          const ownerRaw2 = (l2Node?.owner || it.owner || it.l0Owner || "Unassigned");
+          const cat2 = ownerCategory(ownerRaw2);
+          const desc2 = truncate(l2Node?.description || "");
+
+          ttTimer = setTimeout(() => {
+            const html = `
+              <div class="ttTop">
+                <p class="ttTitle">${esc(l2.id)} · ${esc(l2.name)}</p>
+                <span class="ttOwner">${esc(cat2)}</span>
+              </div>
+              <p class="ttDesc">${esc(desc2 || "No description available.")}</p>
+              <div class="ttStats">
+                <span class="ttPill">Level: L2</span>
+                <span class="ttPill">L3: ${esc(l3Count)}</span>
+                <span class="ttPill">Parent: ${esc(it.l1Id)}</span>
+              </div>
+            `;
+            showTooltipNear(e.clientX, e.clientY, html);
+          }, 120);
+        });
+        chev.addEventListener("mousemove", (e) => {
+          e.stopPropagation();
+          if (!tooltip.classList.contains("show")) return;
+          showTooltipNear(e.clientX, e.clientY, tooltip.innerHTML);
+        });
+        chev.addEventListener("mouseleave", (e) => {
+          e.stopPropagation();
+          if (ttTimer) clearTimeout(ttTimer);
+          hideTooltip();
+        });
+
+        chev.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectL1(it.l0Id, it.l1Node, l2.id);
+          highlightActiveTile(it.l0Id, it.l1Id);
+        });
+
+        chain.appendChild(chev);
+      });
+
+      tile.addEventListener("click", () => {
+        selectL1(it.l0Id, it.l1Node);
+        highlightActiveTile(it.l0Id, it.l1Id);
+        closeDrawer();
+        hideTooltip();
+      });
+
+      // hover tooltip
+      tile.addEventListener("mouseenter", (e) => {
+        if (ttTimer) clearTimeout(ttTimer);
+        const { l2, l3 } = countL2L3(it.l1Node);
+        const desc = truncate(it.l1Node?.description || "");
+        const chip = stageChipText(it.l0Id, it.l1Id, it.l1Node);
+
+        ttTimer = setTimeout(() => {
+          const html = `
+            <div class="ttTop">
+              <p class="ttTitle">${esc(it.l1Id)} · ${esc(it.l1Name)}</p>
+              <span class="ttOwner">${esc(cat)}</span>
+            </div>
+            <p class="ttDesc">${esc(desc || "No description available.")}</p>
+            <div class="ttStats">
+              <span class="ttPill">L0: ${esc(it.l0Id)}</span>
+              <span class="ttPill">L2: ${esc(l2)}</span>
+              <span class="ttPill">L3: ${esc(l3)}</span>
+              <span class="ttPill">Stage: ${esc(chip)}</span>
+            </div>
+          `;
+          showTooltipNear(e.clientX, e.clientY, html);
+        }, 140);
+      });
+      tile.addEventListener("mousemove", (e) => {
+        if (!tooltip.classList.contains("show")) return;
+        showTooltipNear(e.clientX, e.clientY, tooltip.innerHTML);
+      });
+      tile.addEventListener("mouseleave", () => {
+        if (ttTimer) clearTimeout(ttTimer);
+        hideTooltip();
+      });
+
+      return tile;
+    }
+
+    /***********************
+     * Support chevron chain item
+     ***********************/
+    function buildChevron(it) {
+      const el = document.createElement("div");
+      el.className = "chev";
+      el.dataset.l0 = it.l0Id;
+      el.dataset.l1 = it.l1Id;
+
+      el.innerHTML = `
+        <span class="chevId">${esc(it.l1Id)}</span>
+        <span class="chevTitle" title="${esc(it.l1Name)}">${esc(it.l1Name)}</span>
+      `;
+
+      el.addEventListener("click", () => {
+        selectL1(it.l0Id, it.l1Node);
+        highlightActiveTile(it.l0Id, it.l1Id);
+        closeDrawer();
+        hideTooltip();
+      });
+
+      // hover tooltip (same)
+      el.addEventListener("mouseenter", (e) => {
+        if (ttTimer) clearTimeout(ttTimer);
+        const ownerRaw = it.owner || it.l0Owner || "Unassigned";
+        const cat = ownerCategory(ownerRaw);
+        const { l2, l3 } = countL2L3(it.l1Node);
+        const desc = truncate(it.l1Node?.description || "");
+        const chip = stageChipText(it.l0Id, it.l1Id, it.l1Node);
+
+        ttTimer = setTimeout(() => {
+          const html = `
+            <div class="ttTop">
+              <p class="ttTitle">${esc(it.l1Id)} · ${esc(it.l1Name)}</p>
+              <span class="ttOwner">${esc(cat)}</span>
+            </div>
+            <p class="ttDesc">${esc(desc || "No description available.")}</p>
+            <div class="ttStats">
+              <span class="ttPill">L0: ${esc(it.l0Id)}</span>
+              <span class="ttPill">L2: ${esc(l2)}</span>
+              <span class="ttPill">L3: ${esc(l3)}</span>
+              <span class="ttPill">Stage: ${esc(chip)}</span>
+            </div>
+          `;
+          showTooltipNear(e.clientX, e.clientY, html);
+        }, 140);
+      });
+      el.addEventListener("mousemove", (e) => {
+        if (!tooltip.classList.contains("show")) return;
+        showTooltipNear(e.clientX, e.clientY, tooltip.innerHTML);
+      });
+      el.addEventListener("mouseleave", () => {
+        if (ttTimer) clearTimeout(ttTimer);
+        hideTooltip();
+      });
+
+      return el;
+    }
+
+    /***********************
+     * OPS Step 4 vertical scale-to-fit (target: 5 cards into 3-card height)
+     ***********************/
+    function applyOpsStep4Scale() {
+      // Find all wrappers created for OPS step 4
+      const wraps = document.querySelectorAll('.scaleWrap[data-scale="ops-step4"]');
+      if (!wraps.length) return;
+
+      const cs = getComputedStyle(document.documentElement);
+      const rowH = parseFloat(cs.getPropertyValue('--story-row-h')) || 64;
+      const gap = parseFloat(cs.getPropertyValue('--story-gap')) || 8;
+
+      // Allowed height = 3 cards (2 gaps)
+      const maxH = (3 * rowH) + (2 * gap);
+
+      wraps.forEach(wrap => {
+        wrap.style.height = `${maxH}px`;
+        const stack = wrap.querySelector('.stageStack');
+        if (!stack) return;
+
+        // Reset any previous transform
+        stack.style.transform = '';
+        stack.style.transformOrigin = 'top';
+
+        // Measure after reset
+        const contentH = stack.scrollHeight;
+
+        if (contentH > maxH + 1) {
+          let scale = maxH / contentH;
+          // Keep readability; user expects up to 5 items so this should stay reasonable
+          scale = Math.max(0.62, Math.min(1, scale));
+          stack.style.transform = `scaleY(${scale})`;
+        }
+      });
+    }
+
+    /***********************
+     * Chevron fit-to-width (no horizontal slider)
+     ***********************/
+    function applyChevronFit() {
+      const chains = [
+        ...document.querySelectorAll('.l2ChevChain'),
+        ...document.querySelectorAll('.chevChain')
+      ];
+
+      chains.forEach(chain => {
+        const inner = chain.querySelector('.l2ChevInner') || chain.querySelector('.chevInner');
+        if (!inner) return;
+
+        // reset
+        inner.style.transform = '';
+
+        const available = chain.clientWidth;
+        const needed = inner.scrollWidth;
+
+        if (!available || !needed) return;
+
+        if (needed > available + 1) {
+          let scale = available / needed;
+          scale = Math.max(0.72, Math.min(1, scale)); // keep readable
+          inner.style.transformOrigin = 'left center';
+          inner.style.transform = `scaleX(${scale})`;
+        }
+      });
+    }
+
+
+    // Re-apply on resize (keeps the fit stable)
+    window.addEventListener('resize', () => {
+      clearTimeout(window.__opsScaleT);
+      window.__opsScaleT = setTimeout(() => {
+        applyOpsStep4Scale();
+        applyChevronFit();
+      }, 80);
+    });
+
+    /***********************
+     * Map rendering
+     ***********************/
+    function renderStoryLane(content, lane, allItems) {
+      const perStage = Array.from({ length: 6 }, () => []);
+      const continuous = [];
+
+      for (const it of allItems) {
+        const span = getSpanFor(it.l0Id, it.l1Id);
+        if (span) { continuous.push({ ...it, span }); continue; }
+        const col = colForL1(it.l0Id, it.l1Node);
+        const idx = Math.max(1, Math.min(6, col)) - 1;
+        perStage[idx].push(it);
+      }
+
+      const grid = document.createElement("div");
+      grid.className = "storyGrid";
+
+      // stage stacks (NO drawer, NO scroll, full visibility)
+      perStage.forEach((list, idx) => {
+        const stack = document.createElement("div");
+        stack.className = "stageStack";
+        list.forEach(it => stack.appendChild(buildTile(it)));
+
+        // OPS lane, Step 4 column only (idx 3) -> scale-to-fit vertically
+        if (lane.key === "OPS" && idx === 3) {
+          const wrap = document.createElement("div");
+          wrap.className = "scaleWrap";
+          wrap.setAttribute('data-scale', 'ops-step4');
+          wrap.appendChild(stack);
+          grid.appendChild(wrap);
+        } else {
+          grid.appendChild(stack);
+        }
+      });
+
+      content.appendChild(grid);
+
+      // Continuous bar full width
+      if (continuous.length) {
+        const bar = document.createElement("div");
+        bar.className = "continuousBar";
+
+
+        // show first continuous as full-width tile (your primary use case)
+        bar.appendChild(buildContinuousFull(continuous[0]));
+
+        // if more than 1, open via drawer (rare)
+        if (continuous.length > 1) {
+          const extra = continuous.slice(1);
+          const btn = document.createElement("button");
+          btn.className = "btn";
+          btn.textContent = `+${extra.length} more`;
+          btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            openDrawer({
+              title: `${lane.label} · Continuous Services`,
+              subtitle: `Scroll inside the drawer if needed.`,
+              sections: [{
+                title: "Continuous overflow",
+                countText: `${extra.length} items`,
+                items: extra
+              }]
+            });
+          });
+          bar.appendChild(btn);
+        }
+
+        content.appendChild(bar);
+      }
+    }
+
+    function renderSupportChains(content, lane, itemsByL0) {
+      const block = document.createElement("div");
+      block.className = "supportBlock";
+      if (lane.key === "RESO") block.classList.add("compact");
+
+      (lane.supportL0s || []).forEach(cfg => {
+        const list = itemsByL0.get(cfg.l0) || [];
+
+        const row = document.createElement("div");
+        row.className = "supportRow";
+
+        const head = document.createElement("div");
+        head.className = "supportHeader";
+        head.textContent = cfg.title || cfg.l0;
+
+        const chain = document.createElement("div");
+        chain.className = "chevChain";
+        chain.style.setProperty("--chevcols", String(Math.min(list.length || 1, 9)));
+
+        const inner = document.createElement("div");
+        inner.className = "chevInner";
+        list.forEach(it => inner.appendChild(buildChevron(it)));
+
+        chain.appendChild(inner);
+
+        row.appendChild(head);
+        row.appendChild(chain);
+        block.appendChild(row);
+      });
+
+      content.appendChild(block);
+    }
+
+    function renderFoundation2x4(content, lane, itemsByL0) {
+      const grid = document.createElement("div");
+      grid.className = "foundationGrid";
+
+      // fixed order (8 items)
+      for (const code of lane.l0Codes) {
+        const list = itemsByL0.get(code) || [];
+        const l0Node = L0MAP.get(code);
+        const l0NameFromJson = parseInfo(l0Node?.name || "").name;
+        const friendly = (l0NameFromJson && l0NameFromJson !== code) ? l0NameFromJson : (FOUNDATION_LABELS[code] || code);
+
+        const chip = document.createElement("div");
+        chip.className = "foundationChip " + (FOUNDATION_CLASS[code] || "");
+        chip.innerHTML = `
+          <div class="left">
+            <div class="code">${esc(code)}</div>
+            <div class="name" title="${esc(friendly)}">${esc(friendly)}</div>
+          </div>
+          <div class="cnt">${esc(list.length)}</div>
+        `;
+
+        chip.addEventListener("click", () => {
+          openDrawer({
+            title: `Foundation · ${code}`,
+            subtitle: `${friendly} · Scroll inside the drawer if needed.`,
+            sections: [{
+              title: `${code} — ${friendly}`,
+              countText: `${list.length} items`,
+              items: list
+            }]
+          });
+        });
+
+        grid.appendChild(chip);
+      }
+
+      content.appendChild(grid);
+    }
+
+    function renderMap() {
+      const body = $("#mapBody");
+      body.innerHTML = "";
+      OWNER_COUNTS.clear();
+
+      for (const lane of LANES) {
+        const itemsByL0 = new Map();
+        const allItems = [];
+
+        for (const l0Code of lane.l0Codes) {
+          const l0Node = L0MAP.get(l0Code);
+          const l0Owner = l0Node?.owner || "Unassigned";
+
+          const list = [];
+          for (const l1 of safeChildren(l0Node)) {
+            const i1 = parseInfo(l1.name);
+            const ownerRaw = l1?.owner || l0Owner || "Unassigned";
+            const cat = ownerCategory(ownerRaw);
+            OWNER_COUNTS.set(cat, (OWNER_COUNTS.get(cat) || 0) + 1);
+
+            const it = {
+              l0Id: l0Code,
+              l0Owner,
+              l1Id: i1.id,
+              l1Name: i1.name,
+              l1Node: l1,
+              owner: ownerRaw
+            };
+            list.push(it);
+            allItems.push(it);
+          }
+          itemsByL0.set(l0Code, list);
+        }
+
+        // Render row
+        if (laneCollapsed[lane.key] == null) laneCollapsed[lane.key] = !!lane.defaultCollapsed;
+
+        const row = document.createElement("div");
+        row.className = "laneRow";
+        row.dataset.laneKey = lane.key;
+        if (laneCollapsed[lane.key]) row.classList.add("collapsed");
+
+        const label = document.createElement("div");
+        label.className = "laneLabel";
+        const collapsed = !!laneCollapsed[lane.key];
+        const collapsedLine = collapsed
+          ? `<div class="laneSub" style="color:var(--muted);">Collapsed · Expand to see ${esc(lane.laneCode)}</div>`
+          : `<div class="laneSub">${esc(lane.sub || "")}</div>`;
+
+        const descBlock = collapsed ? "" : `
+          <div class="laneDesc">
+            <div class="line1">${esc(lane.desc1 || "")}</div>
+            <div class="line2">${esc(lane.desc2 || "")}</div>
+          </div>
+        `;
+
+        label.innerHTML = `
+          <div class="laneLabelTop">
+            <div class="laneTitle">${esc(lane.label)}</div>
+            <span class="laneCode">${esc(lane.laneCode)}</span>
+          </div>
+
+          ${descBlock}
+
+          ${collapsedLine}
+
+          <div class="laneControls">
+            <button class="btn" data-action="toggle" data-lane="${esc(lane.key)}">
+              ${collapsed ? "Expand" : "Collapse"}
+            </button>
+          </div>
+        `;
+
+        const content = document.createElement("div");
+        content.className = "laneGrid";
+        if (lane.renderMode === "supportChains") content.classList.add("supportLane");
+        if (lane.theme === "l2c") content.classList.add("theme-l2c");
+        if (lane.theme === "o2d") content.classList.add("theme-o2d");
+        if (lane.theme === "d2o") content.classList.add("theme-d2o");
+
+        if (laneCollapsed[lane.key]) {
+          const note = document.createElement("div");
+          note.className = "error";
+          note.style.gridColumn = "1/-1";
+          note.style.color = "var(--muted)";
+          note.style.borderColor = "rgba(16,24,40,0.14)";
+          note.textContent = `Lane collapsed. Expand to see ${lane.laneCode}.`;
+          content.appendChild(note);
+        } else {
+          if (!allItems.length && lane.renderMode !== "foundation2x4") {
+            content.innerHTML = `<div class="error" style="grid-column:1/-1;">No processes found for this lane in ../data/data.json.</div>`;
+          } else {
+            // attach itemsByL0 on the DOM element for support lanes
+            content.__itemsByL0 = itemsByL0;
+            content.__allItems = allItems;
+          }
+        }
+
+        row.appendChild(label);
+        row.appendChild(content);
+        body.appendChild(row);
+
+        // store for later
+        row.__itemsByL0 = itemsByL0;
+        row.__allItems = allItems;
+      }
+
+      // Second pass: fill content blocks
+      body.querySelectorAll(".laneRow").forEach(row => {
+        const laneKey = row.dataset.laneKey;
+        const lane = LANES.find(x => x.key === laneKey);
+        const content = row.querySelector(".laneGrid");
+        if (!lane || !content) return;
+        if (row.classList.contains("collapsed")) return;
+
+        // clear placeholder
+        content.innerHTML = "";
+
+        const itemsByL0 = row.__itemsByL0 || new Map();
+        const allItems = row.__allItems || [];
+
+        if (lane.renderMode === "story") {
+          renderStoryLane(content, lane, allItems);
+        } else if (lane.renderMode === "supportChains") {
+          renderSupportChains(content, lane, itemsByL0);
+        } else if (lane.renderMode === "foundation2x4") {
+          renderFoundation2x4(content, lane, itemsByL0);
+        }
+      });
+
+      // Wire collapse buttons
+      body.querySelectorAll(".btn[data-action='toggle']").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const laneKey = btn.dataset.lane;
+          laneCollapsed[laneKey] = !laneCollapsed[laneKey];
+          renderMap();
+        });
+      });
+
+      renderOwnerLegendFooter();
+      // Apply OPS Step 4 vertical scale-to-fit after DOM paint
+      requestAnimationFrame(applyOpsStep4Scale);
+      requestAnimationFrame(applyChevronFit);
+    }
+
+    /***********************
+     * Search (Enter)
+     ***********************/
+    const searchInput = $("#searchInput");
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) return;
+
+      // find match among tiles/chevrons
+      const tiles = Array.from(document.querySelectorAll("[data-l1]"));
+      const hit = tiles.find(t => (t.dataset.l1 || "").toLowerCase().includes(q));
+      if (hit) {
+        hit.scrollIntoView({ behavior: "smooth", block: "center" });
+        hit.click();
+      }
+    });
+
+    /***********************
+     * Init
+     ***********************/
+    function showError(msg) {
+      const box = $("#errBox");
+      box.style.display = "block";
+      box.textContent = msg;
+    }
+
+    renderStageHeader();
+
+    // NOTE: This page lives under /views in the unified app shell.
+    // Data is stored under /data.
+    fetch("../data/data.json")
+      .then(r => {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(data => {
+        if (!data || !Array.isArray(data.children)) {
+          showError("../data/data.json loaded but is missing expected 'children' array at root.");
+          return;
+        }
+        ROOT = data;
+        L0MAP = getL0Map(ROOT);
+        renderMap();
+      })
+      .catch(err => {
+        showError("Cannot load ../data/data.json. Run via a local server (not file://). " + err);
+        console.error(err);
+      });
+  </script>
+</body>
+
+</html>
