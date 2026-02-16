@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DHL eCommerce · Value Chain · Master Map</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <style>
+    /* =========================
+       BRAND TOKENS (STRICT)
+       ========================= */
+    :root{
+      --dhl-red:#D40511;
+      --dhl-yellow:#FFCC00;
+
+      --bg:#f2f4f8;
+
+      /* L2 sizing: Small is permanent */
+      --l2-scale: 0.60;
+      --l2-base-w: 320px;
+      --l2-w: calc(var(--l2-base-w) * var(--l2-scale));
+      --l2-notch: 35px;
+      --l2-overlap: -14px;
+      --l2-fixed-h: 520px;
+
+      --l2-bg: #f0f0f0;       /* light gray */
+      --l2-bg-hover: #fff4cc; /* light yellow */
+      --l2-border: rgba(212,5,17,0.18);
+
+      --footer-h: 26px;
+
+      /* Process house sizing */
+      --ph-max-w: 1600px;
+      --ph-pad: 10px;
+
+      /* Make the house tall, but NEVER consume the whole viewport */
+      /* ↓ reduced by ~10% from 80vh -> 72vh, and 1000px -> 900px */
+      --house-max-h: clamp(340px, 95vh, 1000px);
+    }
+
+    /* --- LAYOUT RESET --- */
+    body{
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      background-color: var(--bg);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      color: #101828;
+    }
+
+    /* --- SCROLLBAR STYLING --- */
+    ::-webkit-scrollbar{ width: 14px; height: 14px; }
+    ::-webkit-scrollbar-track{ background: #e0e0e0; border-left: 1px solid #ccc; }
+    ::-webkit-scrollbar-thumb{ background: #bbb; border-radius: 7px; border: 3px solid #e0e0e0; }
+    ::-webkit-scrollbar-thumb:hover{ background: #999; }
+
+    /* --- HEADER --- */
+    #app-header{
+      background-color: var(--dhl-red);
+      color: white;
+      padding: 10px 20px;
+      font-size: 18px;
+      font-weight: 900;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      flex-shrink: 0;
+      z-index: 200;
+      gap: 14px;
+    }
+    #version-pill{
+      font-size: 12px;
+      font-weight: 900;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(0,0,0,0.14);
+      white-space: nowrap;
+    }
+
+    /* --- BREADCRUMB BAR (WITH SEARCH) --- */
+    #breadcrumb-bar{
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      padding: 8px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      min-height: 44px;
+    }
+
+    .crumb-toggle{
+      display:flex;
+      align-items:center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: #f7f7f8;
+      font-size: 12px;
+      font-weight: 900;
+      color: #333;
+      white-space: nowrap;
+    }
+    .crumb-toggle:hover{ background:#eceef3; }
+    .crumb-house{ font-size: 15px; line-height: 1; }
+
+    .crumbs{
+      display:flex;
+      align-items:center;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+
+    .crumb{
+      display:inline-flex;
+      align-items:center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.08);
+      background: #fafafa;
+      max-width: 44vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .crumb .cid{ opacity: 0.95; font-weight: 1000; }
+    .crumb .cname{
+      opacity: 0.92;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sep{ opacity: 0.35; font-weight: 900; }
+
+    /* Breadcrumb text colors by level */
+    .crumb.l0{ color: var(--dhl-red); }
+    .crumb.l1{ color: #7a5a00; background: #fffdf2; border-color: rgba(255,204,0,0.35); }
+    .crumb.l2{ color: #333; }
+    .crumb.l3{ color: #667085; }
+
+    /* L0 dropdown in breadcrumb */
+    .l0-filter{
+      height: 32px;
+      border-radius: 999px;
+      border: 1px solid rgba(212,5,17,0.25);
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--dhl-red);
+      background: #fff;
+      max-width: 46vw;
+      outline: none;
+    }
+    .l0-filter:focus{
+      box-shadow: 0 0 0 3px rgba(212,5,17,0.12);
+      border-color: rgba(212,5,17,0.55);
+    }
+
+    /* --- SEARCH --- */
+    #search-wrap{
+      position: relative;
+      flex: 0 0 auto;
+    }
+    #search-input{
+      height: 34px;
+      width: 320px;
+      max-width: 36vw;
+      border-radius: 10px;
+      border: 1px solid #d6dbe6;
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 700;
+      outline: none;
+    }
+    #search-input:focus{
+      border-color: rgba(212,5,17,0.55);
+      box-shadow: 0 0 0 3px rgba(212,5,17,0.12);
+    }
+    #search-results{
+      position: absolute;
+      top: 40px;
+      right: 0;
+      width: 520px;
+      max-width: min(80vw, 520px);
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.10);
+      border-radius: 12px;
+      box-shadow: 0 18px 34px rgba(0,0,0,0.14);
+      overflow: hidden;
+      display: none;
+      z-index: 999;
+    }
+    .sr-head{
+      padding: 10px 12px;
+      background: #f7f7f9;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      font-size: 11px;
+      font-weight: 900;
+      color: #555;
+      display:flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sr-list{
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .sr-item{
+      padding: 10px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      display:flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .sr-item:hover{ background: #fffdf0; }
+    .sr-badge{
+      font-size: 10px;
+      font-weight: 1000;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.10);
+      background: #fafafa;
+      white-space: nowrap;
+      margin-top: 1px;
+    }
+    .sr-badge.l0{ color: var(--dhl-red); border-color: rgba(212,5,17,0.25); }
+    .sr-badge.l1{ color: #7a5a00; background: #fff8d6; border-color: rgba(255,204,0,0.55); }
+    .sr-badge.l2{ color: #333; }
+    .sr-badge.l3{ color: #777; }
+
+    .sr-main{ min-width: 0; }
+    .sr-title{
+      font-size: 12px;
+      font-weight: 1000;
+      color: #111;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sr-path{
+      font-size: 11px;
+      color: #667085;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* --- MINI NAV --- */
+    #mini-nav{
+      background: #333; color: white; padding: 10px 25px; display: none;
+      align-items: center; justify-content: space-between; cursor: pointer;
+      border-bottom: 3px solid var(--dhl-yellow); flex-shrink: 0;
+    }
+    #mini-nav:hover{ background: #444; }
+
+    /* =========================
+       PROCESS HOUSE
+       ========================= */
+    #strategy-house-container{
+      background: #eef1f5;
+      padding: 10px 10px 10px;
+      transition: all 0.5s ease-in-out;
+      max-height: var(--house-max-h);
+      opacity: 1;
+      overflow: auto;
+      border-bottom: 1px solid #ccc;
+      flex-shrink: 0;
+      scrollbar-gutter: stable both-edges;
+    }
+    #strategy-house-container.collapsed{
+      max-height: 0;
+      padding: 0 18px;
+      opacity: 0;
+      border-bottom-width: 0;
+      overflow: hidden;
+    }
+
+    .ph-wrap{
+      max-width: var(--ph-max-w);
+      margin: 0 auto;
+    }
+
+    .ph-title{
+      text-align: center;
+      font-size: 14px;
+      font-weight: 1000;
+      margin: 6px 0 14px;
+      color: #111;
+    }
+
+    /* Roof (must match your requested polygon) */
+    .ph-roof{
+      position: relative;
+      background: linear-gradient(180deg, #ffe89a 0%, var(--dhl-yellow) 78%);
+      border: 1px solid rgba(0,0,0,0.10);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.10);
+      clip-path: polygon(50% 0%, 100% 25%, 100% 100%, 0% 100%, 0% 25%);
+      padding: 20px 18px 16px;
+    }
+    .ph-roof-label{
+      text-align: center;
+      font-size: 14px;
+      font-weight: 1000;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      color: #111;
+    }
+    .ph-roof-row{
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Middle band row (Change | Run | Change) */
+    .ph-band-row{
+      display: grid;
+      grid-template-columns: 1fr 2.2fr 1fr;
+      gap: 12px;
+      align-items: stretch;
+      margin: 12px 0 10px;
+    }
+    .ph-band{
+      background: #2f2f2f;
+      color: #fff;
+      border-radius: 10px;
+      font-weight: 1000;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 10px 10px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+    }
+    .ph-band.side{
+      background: #3a3a3a;
+      color: #fff;
+      justify-content: center;
+      padding-left: 10px;
+    }
+
+    /* Main body row (pillar | center | pillar) */
+    .ph-body-row{
+      display: grid;
+      grid-template-columns: 1fr 2.2fr 1fr;
+      gap: 12px;
+      align-items: stretch;
+      margin-bottom: 12px;
+    }
+
+    /* Pillars are gray */
+    .ph-pillar{
+      background: linear-gradient(180deg, #f3f4f6 0%, #d9dde4 85%);
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.10);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.10);
+      padding: 10px;
+      display:flex;
+      flex-direction: column;
+      min-height: 250px;
+    }
+
+    /* Center (run-the-business canvas) */
+    .ph-center{
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.10);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.10);
+      padding: 10px;
+      display:flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 250px;
+    }
+
+    .ph-center-top{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* mid strip row */
+    .ph-strip{
+      background: linear-gradient(180deg, #fff3bf 0%, #ffe48a 92%);
+      border: 1px solid rgba(0,0,0,0.10);
+      border-radius: 12px;
+      padding: 10px 12px;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25);
+    }
+
+    .ph-subtitle{
+      text-align:center;
+      font-size: 13px;
+      font-weight: 1000;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #111;
+      margin: 2px 0 0;
+    }
+
+    .ph-enablers{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* Foundation green */
+    .ph-foundation{
+      background: linear-gradient(180deg, #1f8a4c 0%, #18723f 85%);
+      color: #fff;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.10);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
+      padding: 12px 12px 14px;
+    }
+    .ph-found-label{
+      text-align:center;
+      font-size: 14px;
+      font-weight: 1000;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+    .ph-found-row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* Slots */
+    .ph-slot{
+      min-height: 92px;
+      display:flex;
+    }
+
+    /* L0 cards */
+    .ph-slot-card{
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.12);
+      cursor: pointer;
+      text-align: left;
+      padding: 12px 14px;
+      transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+      user-select: none;
+      display:flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      background: #fff;
+      color: #111;
+    }
+    .ph-slot-card:hover{
+      transform: translateY(-2px);
+      box-shadow: 0 10px 18px rgba(0,0,0,0.12);
+      filter: brightness(1.02);
+    }
+    .ph-slot-id{
+      font-size: 11px;
+      font-weight: 1000;
+      opacity: 0.95;
+    }
+    .ph-slot-name{
+      font-size: 14px;
+      font-weight: 1000;
+      line-height: 1.15;
+    }
+    .ph-slot-desc{
+      font-size: 11.5px;
+      font-weight: 800;
+      opacity: 0.90;
+      line-height: 1.25;
+      color: #344054;
+    }
+
+    /* =========================
+       CARD COLOR VARIANTS (UPDATED)
+       Requirements:
+       - L2C/O2D/P2R = red
+       - D2O = yellow
+       - S2P/H2R/R2R = light gray
+       - I2P/TRF (pillars) = dark gray
+       - Roof stays roof style
+       - Foundation cards remain foundation style
+       ========================= */
+
+    /* Roof cards */
+    .ph-card-roof{
+      background: rgba(255,255,255,0.62);
+      border-color: rgba(0,0,0,0.16);
+      color: #111;
+    }
+
+    /* Red ops cards (L2C, O2D, P2R) */
+    .ph-card-ops-red{
+      background: var(--dhl-red);
+      border-color: rgba(0,0,0,0.18);
+      color: #fff;
+    }
+    .ph-card-ops-red .ph-slot-desc{ color: rgba(255,255,255,0.92); }
+
+    /* Yellow ops card (D2O) */
+    .ph-card-ops-yellow{
+      background: linear-gradient(180deg, #ffe89a 0%, var(--dhl-yellow) 78%);
+      border-color: rgba(0,0,0,0.14);
+      color: #111;
+    }
+    .ph-card-ops-yellow .ph-slot-desc{ color: #344054; }
+
+    /* Light gray enablers (S2P, H2R, R2R) */
+    .ph-card-enabler-gray{
+      background: #f3f4f6;
+      border-color: rgba(0,0,0,0.12);
+      color: #111;
+    }
+    .ph-card-enabler-gray .ph-slot-desc{ color: #475467; }
+
+    /* Dark gray pillars cards (I2P, TRF) */
+    .ph-card-pillar-dark{
+      background: #2f2f2f;
+      border-color: rgba(0,0,0,0.18);
+      color: #fff;
+    }
+    .ph-card-pillar-dark .ph-slot-desc{ color: rgba(255,255,255,0.88); }
+
+    /* Foundation cards */
+    .ph-card-foundation{
+      background: rgba(255,255,255,0.90);
+      border-color: rgba(255,255,255,0.55);
+      color: #0b3b1f;
+    }
+    .ph-card-foundation .ph-slot-desc{ color:#0b3b1f; opacity: 0.85; }
+
+    /* Active state */
+    .ph-slot-card.active{
+      box-shadow: 0 0 0 3px rgba(255,204,0,0.80), 0 10px 22px rgba(0,0,0,0.12);
+      transform: translateY(-1px);
+    }
+
+    /* Responsive */
+    @media (max-width: 1080px){
+      .ph-title{ font-size: 22px; }
+      .ph-band-row, .ph-body-row{ grid-template-columns: 1fr 2fr 1fr; }
+    }
+    @media (max-width: 920px){
+      :root{ --house-max-h: clamp(320px, 52vh, 620px); }
+      .ph-roof-row{ grid-template-columns: 1fr; }
+      .ph-band-row{ grid-template-columns: 1fr; }
+      .ph-body-row{ grid-template-columns: 1fr; }
+      .ph-center-top, .ph-enablers{ grid-template-columns: 1fr; }
+      .ph-found-row{ grid-template-columns: 1fr; }
+    }
+
+    /* --- CONTEXT BAR --- */
+    #context-bar{
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+      padding: 10px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      height: 50px;
+    }
+    #ctx-title{ margin: 0; font-size: 18px; color: #333; font-weight: 900; }
+    #ctx-desc{ font-size: 14px; color: #666; margin-left: 20px; border-left: 3px solid var(--dhl-yellow); padding-left: 15px; }
+    #ctx-owner{ font-size: 11px; color: #fff; background: #333; padding: 4px 10px; border-radius: 4px; font-weight: 900; }
+
+    /* --- L1 CHEVRONS --- */
+    #l1-container{
+      padding: 15px 30px;
+      background: #fdfdfd;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+      min-height: 80px;
+    }
+    .l1-chevron{
+      position: relative;
+      background: var(--dhl-yellow);
+      height: 60px;
+      width: 170px;
+      margin-right: 6px;
+      margin-bottom: 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding-left: 28px;
+      padding-right: 15px;
+      cursor: pointer;
+      transition: all 0.1s;
+      color: #333;
+      user-select: none;
+      clip-path: polygon(0% 0%, calc(100% - 15px) 0%, 100% 50%, calc(100% - 15px) 100%, 0% 100%, 15px 50%);
+    }
+    .l1-chevron.first{
+      clip-path: polygon(0% 0%, calc(100% - 15px) 0%, 100% 50%, calc(100% - 15px) 100%, 0% 100%);
+      padding-left: 15px;
+    }
+    .l1-chevron:hover{ filter: brightness(0.95); transform: translateY(-2px); }
+    .l1-chevron.active{ background: var(--dhl-red); color: white; }
+    .l1-chevron.active .l1-id{ color: var(--dhl-yellow); }
+    .l1-id{ font-size: 11px; font-weight: 1000; color: var(--dhl-red); margin-bottom: 2px; }
+    .l1-name{ font-size: 12px; font-weight: 900; line-height: 1.1; }
+
+    /* --- WORKSPACE (L2/L3) --- */
+    #workspace{
+      flex-grow: 1;
+      padding: 32px 30px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      background: #fff;
+      display: flex;
+      align-items: flex-start;
+      white-space: nowrap;
+      padding-bottom: calc(40px + var(--footer-h));
+    }
+
+    /* --- L2 CHEVRON --- */
+    .l2-chain-item{
+      position: relative;
+      width: var(--l2-w);
+      min-width: var(--l2-w);
+      margin-left: var(--l2-overlap);
+
+      height: var(--l2-fixed-h);
+      min-height: var(--l2-fixed-h);
+
+      clip-path: polygon(
+        0% 0%,
+        calc(100% - var(--l2-notch)) 0%,
+        100% 50%,
+        calc(100% - var(--l2-notch)) 100%,
+        0% 100%,
+        var(--l2-notch) 50%
+      );
+
+      background: var(--l2-bg);
+
+      filter:
+        drop-shadow(0 0 0.8px rgba(0,0,0,0.45))
+        drop-shadow(0 10px 18px rgba(0,0,0,0.12));
+
+      padding: 22px 18px 16px 40px;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s, z-index 0s, filter 0.2s, background 0.15s;
+    }
+
+    .l2-chain-item::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      clip-path: inherit;
+      pointer-events:none;
+      border: 2px solid var(--l2-border);
+      box-shadow: inset 0 0 0 1px rgba(255,204,0,0.18);
+    }
+
+    .l2-chain-item.first{
+      margin-left: 0;
+      clip-path: polygon(0% 0%, calc(100% - var(--l2-notch)) 0%, 100% 50%, calc(100% - var(--l2-notch)) 100%, 0% 100%);
+      padding-left: 22px;
+    }
+
+    .l2-chain-item:hover{
+      background: var(--l2-bg-hover);
+      z-index: 100;
+      transform: scale(1.01);
+      filter:
+        drop-shadow(0 0 1px rgba(212,5,17,0.45))
+        drop-shadow(0 14px 24px rgba(0,0,0,0.16));
+    }
+
+    .l2-chain-item.flash{
+      outline: 3px solid rgba(255,204,0,0.8);
+      outline-offset: 3px;
+      animation: flash 1.1s ease-in-out 1;
+    }
+    @keyframes flash{
+      0%{ transform: scale(1.01); }
+      50%{ transform: scale(1.02); }
+      100%{ transform: scale(1.01); }
+    }
+
+    .l2-bar{ height: 4px; background: var(--dhl-yellow); width: 100%; margin-bottom: 10px; border-radius: 2px; flex: 0 0 auto; }
+    .l2-id{ color: var(--dhl-red); font-size: 11px; font-weight: 1000; display: block; margin-bottom: 4px; flex: 0 0 auto; }
+
+    .l2-name{
+      color: #222;
+      font-size: 13px;
+      font-weight: 1000;
+      white-space: normal;
+      line-height: 1.20;
+      margin-bottom: 12px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      padding-bottom: 10px;
+
+      height: calc(1.20em * 2);
+      overflow: hidden;
+
+      flex: 0 0 auto;
+    }
+
+    .l3-list{
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding-right: 10px;
+      min-height: 0;
+    }
+
+    .l3-item{
+      background: #fff;
+      margin-bottom: 6px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border-left: 3px solid #ccc;
+      font-size: 12px;
+      white-space: normal;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+    .l3-item:hover{
+      border-left-color: var(--dhl-red);
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .l3-head{ display: flex; justify-content: space-between; margin-bottom: 2px; font-size: 10px; color: #999; text-transform: uppercase; font-weight: 900; }
+    .l3-body{ color: #333; font-weight: 600; }
+
+    /* --- TOOLTIP --- */
+    #tooltip{
+      position: fixed;
+      display: none;
+      background: #222;
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      max-width: 320px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+      z-index: 1000;
+      pointer-events: none;
+      border-left: 4px solid var(--dhl-yellow);
+    }
+    #tooltip h4{ margin: 0 0 6px 0; color: var(--dhl-yellow); font-size: 13px; }
+    #tooltip p{ margin: 0 0 8px 0; color: #ddd; line-height: 1.4; }
+    #tooltip .meta{ border-top: 1px solid #444; padding-top: 8px; color: #aaa; font-size: 11px; }
+
+    /* --- ERROR --- */
+    #error-msg{
+      display: none;
+      padding: 18px 20px;
+      background: #fff;
+      color: #b42318;
+      border-bottom: 1px solid #f2c5c5;
+      font-weight: 900;
+    }
+
+    /* --- FOOTER --- */
+    #app-footer{
+      height: var(--footer-h);
+      flex-shrink: 0;
+      background: transparent;
+      color: rgba(0,0,0,0.55);
+      font-size: 10px;
+      font-weight: 700;
+      display:flex;
+      align-items:center;
+      justify-content: center;
+      gap: 10px;
+      padding: 0 12px;
+      border-top: 1px solid rgba(0,0,0,0.06);
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    #footer-counts{
+      color: rgba(0,0,0,0.50);
+      font-weight: 800;
+      font-size: 10px;
+      max-width: 52vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-header">
+    <div>DHL eCommerce Value Chain</div>
+    <div id="version-pill">v 0.1</div>
+  </div>
+
+  <div id="breadcrumb-bar">
+    <div id="house-toggle" class="crumb-toggle" title="Toggle Process House">
+      <span class="crumb-house">🏠</span>
+      <span id="house-toggle-label">Collapse Process House</span>
+    </div>
+
+    <div class="crumbs" id="crumbs"></div>
+
+    <div id="search-wrap">
+      <input id="search-input" type="text" placeholder="Search (ID or name)… e.g., L2C_02, address validation" autocomplete="off"/>
+      <div id="search-results">
+        <div class="sr-head">
+          <span id="sr-title">Results</span>
+          <span style="opacity:.65;">Click to navigate</span>
+        </div>
+        <div class="sr-list" id="sr-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="mini-nav" onclick="toggleHouse(true)">
+    <div id="mini-nav-text">View: <strong>Process House</strong></div>
+    <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px;">▼ Expand House</div>
+  </div>
+
+  <!-- PROCESS HOUSE (L0) -->
+  <div id="strategy-house-container">
+    <div class="ph-wrap">
+      <div class="ph-title">The L0 Enterprise Process House: Value Stream Architecture</div>
+
+      <!-- Roof: Manage the business -->
+      <div class="ph-roof">
+        <div class="ph-roof-label">MANAGE THE BUSINESS</div>
+        <div class="ph-roof-row">
+          <div class="ph-slot" id="ph-slot-S2E"></div>
+          <div class="ph-slot" id="ph-slot-GRC"></div>
+          <div class="ph-slot" id="ph-slot-EA_PM"></div>
+        </div>
+      </div>
+
+      <!-- Bands: Change / Run / Change -->
+      <div class="ph-band-row">
+        <div class="ph-band side">CHANGE THE BUSINESS</div>
+        <div class="ph-band">RUN THE BUSINESS</div>
+        <div class="ph-band side">CHANGE THE BUSINESS</div>
+      </div>
+
+      <!-- Body: left pillar / center / right pillar -->
+      <div class="ph-body-row">
+        <div class="ph-pillar">
+          <div class="ph-slot" id="ph-slot-I2P" style="flex:1 1 auto;"></div>
+        </div>
+
+        <div class="ph-center">
+          <div class="ph-center-top">
+            <div class="ph-slot" id="ph-slot-L2C"></div>
+            <div class="ph-slot" id="ph-slot-O2D"></div>
+            <div class="ph-slot" id="ph-slot-P2R"></div>
+          </div>
+
+          <div class="ph-strip">
+            <div class="ph-slot" id="ph-slot-D2O"></div>
+          </div>
+
+          <div class="ph-subtitle">ESSENTIAL ENABLERS</div>
+
+          <div class="ph-enablers">
+            <div class="ph-slot" id="ph-slot-S2P"></div>
+            <div class="ph-slot" id="ph-slot-H2R"></div>
+            <div class="ph-slot" id="ph-slot-R2R"></div>
+          </div>
+        </div>
+
+        <div class="ph-pillar">
+          <div class="ph-slot" id="ph-slot-TRF" style="flex:1 1 auto;"></div>
+        </div>
+      </div>
+
+      <!-- Foundation -->
+      <div class="ph-foundation">
+        <div class="ph-found-label">FOUNDATION</div>
+        <div class="ph-found-row">
+          <div class="ph-slot" id="ph-slot-DA"></div>
+          <div class="ph-slot" id="ph-slot-ITF"></div>
+        </div>
+      </div>
+
+      <!-- Fallback bucket -->
+      <div style="margin-top:10px; display:none;" id="ph-fallback-wrap">
+        <div style="font-weight:1000; color:#667085; font-size:12px; margin:8px 2px;">Other value streams</div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;" id="ph-slot-OTHER"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="error-msg"></div>
+
+  <div id="context-bar">
+    <div style="display:flex; align-items:center">
+      <h2 id="ctx-title">Overview</h2>
+      <span id="ctx-desc">Select a Value Stream from the Process House to navigate.</span>
+    </div>
+    <div id="ctx-owner"></div>
+  </div>
+
+  <div id="l1-container"></div>
+
+  <div id="workspace">
+    <div style="color:#bbb; margin:auto; font-size:18px; text-align:center; padding-top: 60px;">
+      <div style="font-size: 50px; color:#e0e0e0; margin-bottom: 20px;">⟰</div>
+      Select a Value Stream above to view the process chain.
+    </div>
+  </div>
+
+  <div id="tooltip"></div>
+
+  <div id="app-footer">
+    <span id="footer-text">DHL Ecommerce Global IT , Head of Data Driven Governce, Serhat Kut,PHD 2026</span>
+    <span id="footer-counts"></span>
+  </div>
+
+  <script>
+    /* ========= DOM ========= */
+    const houseContainer = document.getElementById('strategy-house-container');
+    const miniNav = document.getElementById('mini-nav');
+    const miniNavText = document.getElementById('mini-nav-text');
+    const l1Container = document.getElementById('l1-container');
+    const workspace = document.getElementById('workspace');
+    const tooltip = document.getElementById('tooltip');
+    const errorMsg = document.getElementById('error-msg');
+
+    const crumbsEl = document.getElementById('crumbs');
+    const houseToggleBtn = document.getElementById('house-toggle');
+    const houseToggleLabel = document.getElementById('house-toggle-label');
+
+    const searchInput = document.getElementById('search-input');
+    const searchResults = document.getElementById('search-results');
+    const srTitle = document.getElementById('sr-title');
+    const srList = document.getElementById('sr-list');
+
+    /* ========= DATA / STATE ========= */
+    let rootData = null;
+
+    let currentL0 = null;
+    let currentL1 = null;
+    let currentL2 = null;
+    let currentL3 = null;
+
+    // for breadcrumb dropdown
+    let l0Options = []; // [{id,name,node}]
+
+    // Search index: [{level, node, id, name, path:{l0,l1,l2,l3}, pathText}]
+    let index = [];
+
+    /* ========= LOAD ========= */
+    const DATA_URL = new URL('data.json', window.location.href).toString();
+    // Use an absolute-resolved URL so GitHub Pages subpaths (/repo/) and trailing-slash differences don't break relative loading.
+    d3.json(DATA_URL).then(function(data) {
+      if(!data || !data.children){
+        showLoadError("data.json loaded but has no 'children'.");
+        return;
+      }
+      rootData = data;
+      l0Options = safeChildren(rootData).map(n=>{
+        const inf = parseInfo(n.name);
+        return { id: inf.id, name: inf.name, node: n };
+      }).sort((a,b)=> (a.id||"").localeCompare(b.id||""));
+
+      renderHouse(data);
+      buildIndex(data);
+      renderCrumbs();
+      updateFooterCounts();
+
+      // Ensure L1 area is visible even on wide screens
+      if(!safeChildren(rootData).length){
+        l1Container.innerHTML = '<div style="color:#999; font-weight:900;">No L0 streams in data.json</div>';
+      } else {
+        l1Container.innerHTML = '<div style="color:#999; font-size:12px; font-weight:900; padding:6px 2px;">Select an L0 stream above (or from the L0 dropdown in the breadcrumb) to populate L1 domains.</div>';
+      }
+    }).catch(err => {
+      showLoadError(`Cannot load data.json from: ${DATA_URL}\n\nCheck: (1) data.json is committed & published in the same GitHub Pages folder, (2) correct case-sensitive filename, (3) open via https:// (not file://).\n\nSee console for details.`);
+      console.error(err);
+    });
+
+    function showLoadError(msg){
+      errorMsg.style.display = 'block';
+      errorMsg.textContent = msg;
+      errorMsg.style.whiteSpace = 'pre-wrap';
+    }
+
+    function parseInfo(str) {
+      if(!str) return {id:"", name:""};
+      const parts = str.split(":");
+      return { id: parts[0].trim(), name: parts.slice(1).join(":").trim() || parts[0].trim() };
+    }
+
+    /* ========= PROCESS HOUSE TOGGLE ========= */
+    function toggleHouse(show) {
+      if(show) {
+        houseContainer.classList.remove('collapsed');
+        miniNav.style.display = 'none';
+        houseToggleLabel.textContent = "Collapse Process House";
+      } else {
+        houseContainer.classList.add('collapsed');
+        setTimeout(() => { miniNav.style.display = 'flex'; }, 300);
+        houseToggleLabel.textContent = "Expand Process House";
+      }
+    }
+
+    houseToggleBtn.addEventListener('click', () => {
+      const isCollapsed = houseContainer.classList.contains('collapsed');
+      toggleHouse(isCollapsed);
+    });
+
+    /* ========= PROCESS HOUSE RENDER (SLOTS) ========= */
+    function renderHouse(data) {
+      // Clear all slots
+      const slotIds = ["S2E","GRC","EA_PM","I2P","TRF","L2C","O2D","P2R","D2O","S2P","H2R","R2R","DA","ITF"];
+      slotIds.forEach(k=>{
+        const el = document.getElementById(`ph-slot-${k}`);
+        if(el) el.innerHTML = "";
+      });
+      const otherWrap = document.getElementById('ph-fallback-wrap');
+      const otherSlot = document.getElementById('ph-slot-OTHER');
+      if(otherSlot) otherSlot.innerHTML = "";
+      if(otherWrap) otherWrap.style.display = "none";
+
+      // Map by L0 ID
+      const l0s = data.children.slice().sort((a,b) => (a.name||"").localeCompare(b.name||""));
+      l0s.forEach(l0 => {
+        const info = parseInfo(l0.name);
+        const id = (info.id || "").replace(/\s+/g,"");
+        const slot = document.getElementById(`ph-slot-${cssId(id)}`);
+        const inKnownSlot = !!slot;
+
+        const btn = document.createElement('button');
+        btn.className = 'ph-slot-card';
+        btn.dataset.l0id = info.id;
+
+        // Decide variant by slot ID (exact mapping per your request)
+        const roofIds = new Set(["S2E","GRC","EA_PM"]);
+        const foundationIds = new Set(["DA","ITF"]);
+        const pillarDarkIds = new Set(["I2P","TRF"]);         // dark gray
+        const opsRedIds = new Set(["L2C","O2D","P2R"]);       // red
+        const opsYellowIds = new Set(["D2O"]);                // yellow
+        const enablerGrayIds = new Set(["S2P","H2R","R2R"]);  // light gray
+
+        if(roofIds.has(id)) btn.classList.add('ph-card-roof');
+        else if(foundationIds.has(id)) btn.classList.add('ph-card-foundation');
+        else if(pillarDarkIds.has(id)) btn.classList.add('ph-card-pillar-dark');
+        else if(opsRedIds.has(id)) btn.classList.add('ph-card-ops-red');
+        else if(opsYellowIds.has(id)) btn.classList.add('ph-card-ops-yellow');
+        else if(enablerGrayIds.has(id)) btn.classList.add('ph-card-enabler-gray');
+        else btn.classList.add('ph-card-enabler-gray'); // safe default (readable)
+
+        const desc = (l0.description || "").trim();
+        const shortDesc = desc.length > 140 ? (desc.slice(0, 137) + "…") : desc;
+
+        btn.innerHTML = `
+          <div class="ph-slot-id">${escapeHtml(info.id)}</div>
+          <div class="ph-slot-name">${escapeHtml(info.name)}</div>
+          <div class="ph-slot-desc">${escapeHtml(shortDesc)}</div>
+        `;
+
+        btn.onclick = () => selectL0(l0, btn);
+
+        btn.onmousemove = (e) => showTooltip(e, info.name, l0.description, `Owner: ${escapeHtml(l0.owner||"-")}`);
+        btn.onmouseleave = hideTooltip;
+
+        if(inKnownSlot){
+          slot.appendChild(btn);
+        } else if(otherSlot && otherWrap) {
+          otherWrap.style.display = "block";
+          otherSlot.appendChild(btn);
+        }
+      });
+    }
+
+    function cssId(id){
+      return id.replace(/^EA-PM$/,"EA_PM");
+    }
+
+    /* ========= BREADCRUMB ========= */
+    function renderCrumbs(){
+      crumbsEl.innerHTML = '';
+
+      function addSep(){
+        const s = document.createElement('span');
+        s.className = 'sep';
+        s.textContent = '›';
+        crumbsEl.appendChild(s);
+      }
+
+      // L0 dropdown (always available once data loads)
+      if(l0Options.length){
+        const select = document.createElement('select');
+        select.className = 'l0-filter';
+        select.title = "Select L0 (Value Stream)";
+
+        const opt0 = document.createElement('option');
+        opt0.value = "";
+        opt0.textContent = "L0 (Value Stream)…";
+        select.appendChild(opt0);
+
+        l0Options.forEach(o=>{
+          const opt = document.createElement('option');
+          opt.value = o.id;
+          opt.textContent = `${o.id} — ${o.name}`;
+          select.appendChild(opt);
+        });
+
+        select.value = currentL0 ? parseInfo(currentL0.name).id : "";
+
+        select.addEventListener('change', () => {
+          const id = select.value;
+          if(!id){
+            // reset view
+            currentL0 = null; currentL1 = null; currentL2 = null; currentL3 = null;
+            document.querySelectorAll('.ph-slot-card, .l0-btn').forEach(b => b.classList.remove('active'));
+            l1Container.innerHTML = '<div style="color:#999; font-size:12px; font-weight:900; padding:6px 2px;">Select an L0 stream above (or from this dropdown) to populate L1 domains.</div>';
+            workspace.innerHTML = `
+              <div style="color:#bbb; margin:auto; font-size:18px; text-align:center; padding-top: 60px;">
+                <div style="font-size: 50px; color:#e0e0e0; margin-bottom: 20px;">⟰</div>
+                Select a Value Stream above to view the process chain.
+              </div>`;
+            document.getElementById('ctx-title').innerText = "Overview";
+            document.getElementById('ctx-desc').innerText = "Select a Value Stream from the Process House to navigate.";
+            document.getElementById('ctx-owner').innerText = "";
+            renderCrumbs();
+            updateFooterCounts();
+            return;
+          }
+
+          const picked = l0Options.find(x => x.id === id);
+          if(picked){
+            selectL0(picked.node, findL0Button(picked.node));
+          }
+        });
+
+        crumbsEl.appendChild(select);
+      } else {
+        const hint = document.createElement('span');
+        hint.style.cssText = "font-size:12px; color:#777; font-weight:800;";
+        hint.textContent = "Loading…";
+        crumbsEl.appendChild(hint);
+        return;
+      }
+
+      if(currentL1){ addSep(); addCrumb('l1', currentL1); }
+      if(currentL2){ addSep(); addCrumb('l2', currentL2); }
+      if(currentL3){ addSep(); addCrumb('l3', currentL3); }
+
+      function addCrumb(levelClass, node){
+        if(!node) return;
+        const inf = parseInfo(node.name);
+        const c = document.createElement('span');
+        c.className = `crumb ${levelClass}`;
+        c.title = inf.name;
+        c.innerHTML = `<span class="cid">${escapeHtml(inf.id)}</span><span class="cname">${escapeHtml(inf.name)}</span>`;
+        crumbsEl.appendChild(c);
+      }
+    }
+
+    /* ========= SELECTION FLOW ========= */
+    function selectL0(l0Data, btn) {
+      currentL0 = l0Data;
+      currentL1 = null;
+      currentL2 = null;
+      currentL3 = null;
+
+      document.querySelectorAll('.ph-slot-card, .l0-btn').forEach(b => b.classList.remove('active'));
+      if(btn) btn.classList.add('active');
+
+      const info = parseInfo(l0Data.name);
+      document.getElementById('ctx-title').innerText = `${info.name}`;
+      document.getElementById('ctx-desc').innerText = l0Data.description || "No description.";
+      document.getElementById('ctx-owner').innerText = (l0Data.owner || "Unassigned").toUpperCase();
+
+      miniNavText.innerHTML = `View: <strong style="color:var(--dhl-yellow)">Process House</strong>`;
+      toggleHouse(false);
+
+      l1Container.innerHTML = '';
+      workspace.innerHTML = '<div style="color:#999; margin:auto; font-size:16px; padding-top:60px;">Select a Process Domain (L1 Chevron) to view details.</div>';
+
+      if(l0Data.children && l0Data.children.length) {
+        l0Data.children.forEach((l1, idx) => {
+          const div = document.createElement('div');
+          div.className = 'l1-chevron';
+          if(idx === 0) div.classList.add('first');
+
+          const inf = parseInfo(l1.name);
+          div.dataset.l1id = inf.id;
+
+          div.innerHTML = `<span class="l1-id">${escapeHtml(inf.id)}</span><span class="l1-name">${escapeHtml(inf.name)}</span>`;
+          div.onclick = () => selectL1(l1, div);
+          div.onmousemove = (e) => showTooltip(e, inf.name, l1.description, `Owner: ${escapeHtml(l1.owner||"-")}`);
+          div.onmouseleave = hideTooltip;
+
+          l1Container.appendChild(div);
+        });
+      } else {
+        l1Container.innerHTML = '<div style="color:#999; font-size:12px; font-weight:900; padding:6px 2px;">No L1 domains under this L0.</div>';
+      }
+
+      renderCrumbs();
+      updateFooterCounts();
+    }
+
+    function selectL1(l1Data, chevronEl) {
+      currentL1 = l1Data;
+      currentL2 = null;
+      currentL3 = null;
+
+      document.querySelectorAll('.l1-chevron').forEach(c => c.classList.remove('active'));
+      if(chevronEl) chevronEl.classList.add('active');
+
+      workspace.innerHTML = '';
+
+      if(l1Data.children) {
+        l1Data.children.forEach((l2, idx) => {
+          const l2Inf = parseInfo(l2.name);
+          const card = document.createElement('div');
+
+          card.className = 'l2-chain-item';
+          if(idx === 0) card.classList.add('first');
+
+          card.dataset.l2id = l2Inf.id;
+
+          card.innerHTML = `
+            <div class="l2-bar"></div>
+            <span class="l2-id">${escapeHtml(l2Inf.id)}</span>
+            <span class="l2-name">${escapeHtml(l2Inf.name)}</span>
+            <div class="l3-list" id="l3-list-${idx}"></div>
+          `;
+
+          // L2 hover tooltip (guard: do not override when hovering L3)
+          card.onmousemove = (e) => {
+            if(e.target && e.target.closest && e.target.closest('.l3-item')) return;
+            const l2Owner = l2.owner || l1Data.owner || (currentL0 && currentL0.owner) || "-";
+            const meta = `<b>Owner:</b> ${escapeHtml(l2Owner)}<br><b>Trigger:</b> ${escapeHtml(l2.trigger || "-")}<br><b>Outcome:</b> ${escapeHtml(l2.outcome || "-")}`;
+            showTooltip(e, l2Inf.name, l2.description || "", meta);
+          };
+          card.onmouseleave = hideTooltip;
+
+          card.addEventListener('click', () => {
+            currentL2 = l2;
+            currentL3 = null;
+            renderCrumbs();
+            updateFooterCounts();
+          });
+
+          workspace.appendChild(card);
+
+          const list = card.querySelector(`#l3-list-${idx}`);
+          if(l2.children && l2.children.length > 0) {
+            l2.children.forEach(l3 => {
+              const l3Inf = parseInfo(l3.name);
+              const item = document.createElement('div');
+              item.className = 'l3-item';
+              item.dataset.l3id = l3Inf.id;
+
+              item.innerHTML = `
+                <div class="l3-head"><span>${escapeHtml(l3Inf.id)}</span></div>
+                <div class="l3-body">${escapeHtml(l3Inf.name)}</div>
+              `;
+
+              item.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                currentL2 = l2;
+                currentL3 = l3;
+                renderCrumbs();
+                updateFooterCounts();
+              });
+
+              // L3 hover tooltip (stop propagation so parent can't overwrite)
+              item.onmousemove = (e) => {
+                e.stopPropagation();
+                const l3Owner = l3.owner || l2.owner || l1Data.owner || (currentL0 && currentL0.owner) || "-";
+                const meta = `<b>Owner:</b> ${escapeHtml(l3Owner)}<br><b>Trigger:</b> ${escapeHtml(l3.trigger||"-")}<br><b>Outcome:</b> ${escapeHtml(l3.outcome||"-")}`;
+                showTooltip(e, l3Inf.name, l3.description, meta);
+              };
+              item.onmouseleave = (e) => {
+                e.stopPropagation();
+                hideTooltip();
+              };
+
+              list.appendChild(item);
+            });
+          } else {
+            list.innerHTML = `<div style="padding:10px; color:#ccc; font-style:italic;">No L3 steps.</div>`;
+          }
+        });
+      }
+
+      renderCrumbs();
+      updateFooterCounts();
+    }
+
+    /* ========= TOOLTIP ========= */
+    function showTooltip(e, title, desc, meta) {
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX + 15) + 'px';
+      tooltip.style.top = (e.clientY + 15) + 'px';
+      tooltip.innerHTML = `<h4>${escapeHtml(title)}</h4><p>${escapeHtml(desc||"")}</p><div class="meta">${meta||""}</div>`;
+    }
+    function hideTooltip() { tooltip.style.display = 'none'; }
+
+    /* ========= FOOTER COUNTS ========= */
+    function safeChildren(node){
+      return (node && Array.isArray(node.children)) ? node.children : [];
+    }
+
+    function computeTotals(){
+      let l0 = 0, l1 = 0, l2 = 0, l3 = 0;
+      if(!rootData) return {l0,l1,l2,l3};
+
+      l0 = safeChildren(rootData).length;
+      safeChildren(rootData).forEach(n0=>{
+        const c1 = safeChildren(n0);
+        l1 += c1.length;
+        c1.forEach(n1=>{
+          const c2 = safeChildren(n1);
+          l2 += c2.length;
+          c2.forEach(n2=>{
+            l3 += safeChildren(n2).length;
+          });
+        });
+      });
+
+      return {l0,l1,l2,l3};
+    }
+
+    function selectedPathIds(){
+      const p = [];
+      if(currentL0) p.push(parseInfo(currentL0.name).id);
+      if(currentL1) p.push(parseInfo(currentL1.name).id);
+      if(currentL2) p.push(parseInfo(currentL2.name).id);
+      if(currentL3) p.push(parseInfo(currentL3.name).id);
+      return p;
+    }
+
+    function updateFooterCounts(){
+      const el = document.getElementById('footer-counts');
+      if(!el) return;
+
+      const totals = computeTotals();
+      const path = selectedPathIds();
+      const current = path.length ? path.join(" › ") : "—";
+
+      el.textContent = `| Totals: L0 ${totals.l0} · L1 ${totals.l1} · L2 ${totals.l2} · L3 ${totals.l3} | Current: ${current}`;
+    }
+
+    /* ========= SEARCH ========= */
+    function buildIndex(data){
+      index = [];
+
+      const l0s = safeChildren(data);
+      l0s.forEach(l0=>{
+        const l0Info = parseInfo(l0.name);
+        index.push(makeIdx("l0", l0, {l0}, `${l0Info.id} ${l0Info.name}`));
+
+        safeChildren(l0).forEach(l1=>{
+          const l1Info = parseInfo(l1.name);
+          index.push(makeIdx("l1", l1, {l0,l1}, `${l0Info.id} › ${l1Info.id} ${l1Info.name}`));
+
+          safeChildren(l1).forEach(l2=>{
+            const l2Info = parseInfo(l2.name);
+            index.push(makeIdx("l2", l2, {l0,l1,l2}, `${l0Info.id} › ${l1Info.id} › ${l2Info.id} ${l2Info.name}`));
+
+            safeChildren(l2).forEach(l3=>{
+              const l3Info = parseInfo(l3.name);
+              index.push(makeIdx("l3", l3, {l0,l1,l2,l3}, `${l0Info.id} › ${l1Info.id} › ${l2Info.id} › ${l3Info.id} ${l3Info.name}`));
+            });
+          });
+        });
+      });
+    }
+
+    function makeIdx(level, node, path, pathText){
+      const info = parseInfo(node.name);
+      return { level, node, id: info.id, name: info.name, path, pathText };
+    }
+
+    function openSearchResults(items, q){
+      srList.innerHTML = '';
+      srTitle.textContent = `Results for "${q}" (${items.length})`;
+      const max = Math.min(items.length, 30);
+
+      for(let i=0;i<max;i++){
+        const it = items[i];
+        const row = document.createElement('div');
+        row.className = 'sr-item';
+        row.innerHTML = `
+          <span class="sr-badge ${it.level}">${it.level.toUpperCase()}</span>
+          <div class="sr-main">
+            <div class="sr-title">${escapeHtml(it.id)} — ${escapeHtml(it.name)}</div>
+            <div class="sr-path">${escapeHtml(it.pathText)}</div>
+          </div>
+        `;
+        row.addEventListener('click', () => {
+          navigateToIndexItem(it);
+          closeSearchResults();
+          searchInput.blur();
+        });
+        srList.appendChild(row);
+      }
+
+      if(items.length === 0){
+        const empty = document.createElement('div');
+        empty.style.cssText = "padding:12px; color:#667085; font-size:12px; font-weight:800;";
+        empty.textContent = "No matches.";
+        srList.appendChild(empty);
+      }
+
+      searchResults.style.display = 'block';
+    }
+
+    function closeSearchResults(){
+      searchResults.style.display = 'none';
+      srList.innerHTML = '';
+    }
+
+    function escapeHtml(s){
+      return String(s || "")
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+
+    function searchIndex(q){
+      const term = q.trim().toLowerCase();
+      if(!term) return [];
+
+      const scored = index.map(it=>{
+        const hayId = it.id.toLowerCase();
+        const hayName = it.name.toLowerCase();
+        const hayPath = it.pathText.toLowerCase();
+
+        let score = 0;
+        if(hayId === term) score += 100;
+        if(hayId.startsWith(term)) score += 70;
+        if(hayId.includes(term)) score += 45;
+
+        if(hayName.startsWith(term)) score += 40;
+        if(hayName.includes(term)) score += 25;
+
+        if(hayPath.includes(term)) score += 10;
+
+        const depthBoost = (it.level === "l3") ? 3 : (it.level === "l2") ? 2 : (it.level === "l1") ? 1 : 0;
+        score += depthBoost;
+
+        return {it, score};
+      }).filter(x=>x.score>0);
+
+      scored.sort((a,b)=> b.score - a.score);
+      return scored.map(x=>x.it);
+    }
+
+    function navigateToIndexItem(it){
+      const {l0,l1,l2,l3} = it.path;
+
+      selectL0(l0, findL0Button(l0));
+
+      if(l1){
+        const l1El = findL1Chevron(l1);
+        selectL1(l1, l1El);
+      }
+
+      if(l2){
+        currentL2 = l2;
+        currentL3 = null;
+        renderCrumbs();
+        updateFooterCounts();
+        scrollToL2Card(parseInfo(l2.name).id, true);
+      }
+
+      if(l3){
+        currentL2 = l2;
+        currentL3 = l3;
+        renderCrumbs();
+        updateFooterCounts();
+        scrollToL2Card(parseInfo(l2.name).id, true);
+      }
+    }
+
+    function findL0Button(l0){
+      const id = parseInfo(l0.name).id;
+      return document.querySelector(`.ph-slot-card[data-l0id="${cssEscape(id)}"], .l0-btn[data-l0id="${cssEscape(id)}"]`);
+    }
+    function findL1Chevron(l1){
+      const id = parseInfo(l1.name).id;
+      return document.querySelector(`.l1-chevron[data-l1id="${cssEscape(id)}"]`);
+    }
+
+    function scrollToL2Card(l2id, flash){
+      const card = Array.from(workspace.querySelectorAll('.l2-chain-item'))
+        .find(el => (el.dataset.l2id || "").trim() === l2id);
+
+      if(!card) return;
+
+      const left = card.offsetLeft - 20;
+      workspace.scrollTo({ left: Math.max(0,left), behavior: 'smooth' });
+
+      if(flash){
+        card.classList.add('flash');
+        setTimeout(()=> card.classList.remove('flash'), 1200);
+      }
+    }
+
+    function cssEscape(str){
+      return String(str).replace(/["\\]/g, '\\$&');
+    }
+
+    /* Search input behavior */
+    let searchDebounce = null;
+
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value;
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        const items = searchIndex(q);
+        openSearchResults(items, q.trim());
+      }, 120);
+    });
+
+    searchInput.addEventListener('focus', () => {
+      const q = searchInput.value.trim();
+      if(q){
+        openSearchResults(searchIndex(q), q);
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      const inSearch = e.target.closest('#search-wrap');
+      if(!inSearch) closeSearchResults();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape'){
+        closeSearchResults();
+        searchInput.blur();
+        hideTooltip();
+      }
+    });
+  </script>
+</body>
+</html>
