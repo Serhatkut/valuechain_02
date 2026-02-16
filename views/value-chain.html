@@ -982,6 +982,13 @@
       renderCrumbs();
       updateFooterCounts();
 
+      // If the app shell passed a focus id (e.g., from Customer Journey), navigate to it.
+      const focusId = new URLSearchParams(window.location.search).get('focus');
+      if (focusId) {
+        // Defer slightly so initial layout is painted.
+        setTimeout(() => focusById(focusId), 60);
+      }
+
       // Ensure L1 area is visible even on wide screens
       if(!safeChildren(rootData).length){
         l1Container.innerHTML = '<div style="color:#999; font-weight:900;">No L0 streams in ../data/data.json</div>';
@@ -992,6 +999,29 @@
       showLoadError("Cannot load ../data/data.json. Ensure the file exists and you're using a local server (not file://).");
       console.error(err);
     });
+
+    // Allow other views (Customer Journey) to open the *same* Value Chain detail UX.
+    window.addEventListener('message', (ev) => {
+      const msg = ev?.data;
+      if (!msg || typeof msg !== 'object') return;
+      if (msg.type === 'VC_NAVIGATE' && msg.id) {
+        focusById(String(msg.id));
+      }
+    });
+
+    function focusById(id){
+      const target = String(id || '').trim();
+      if(!target) return;
+      const hit = index.find(it => {
+        const inf = parseInfo(it.node?.name || '');
+        return (inf.id || '').trim() === target;
+      });
+      if(hit){
+        navigateToIndexItem(hit);
+      } else {
+        console.warn('focusById: no match for', target);
+      }
+    }
 
     function showLoadError(msg){
       errorMsg.style.display = 'block';

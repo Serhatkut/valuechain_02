@@ -8,10 +8,14 @@
     'customer-journey': 'views/customer-journey.html',
   };
 
-  function currentRoute() {
+  function parseHash() {
     const h = (location.hash || '').replace(/^#\/?/, '');
-    const key = h.split('?')[0].trim();
-    return routes[key] ? key : 'value-chain';
+    const [rawKey, rawQuery] = h.split('?');
+    const key = (rawKey || '').trim();
+    return {
+      key: routes[key] ? key : 'value-chain',
+      query: (rawQuery || '').trim(),
+    };
   }
 
   function setActiveTab(routeKey) {
@@ -19,20 +23,22 @@
   }
 
   function navigate() {
-    const routeKey = currentRoute();
+    const { key: routeKey, query } = parseHash();
     setActiveTab(routeKey);
 
     // Always load from the same repo folder.
     // Both embedded views read the same data file at: ../data/data.json
     // To keep paths working, we append a query param that can be used later for cache busting.
     const src = routes[routeKey];
-    frame.src = `${src}?v=${Date.now()}`;
+    const q = query ? `&${query}` : '';
+    frame.src = `${src}?v=${Date.now()}${q}`;
   }
 
   openBtn.addEventListener('click', () => {
-    const routeKey = currentRoute();
+    const { key: routeKey, query } = parseHash();
     const url = routes[routeKey];
-    window.open(url, '_blank', 'noopener');
+    const q = query ? `?${query}` : '';
+    window.open(`${url}${q}`, '_blank', 'noopener');
   });
 
   window.addEventListener('hashchange', navigate);
@@ -40,4 +46,14 @@
   // Default route
   if (!location.hash) location.hash = '#/value-chain';
   navigate();
+
+  // Bridge: customer-journey view can request opening the Value Chain and focusing an ID.
+  window.addEventListener('message', (ev) => {
+    const msg = ev?.data;
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.type === 'VC_NAVIGATE' && msg.id) {
+      const id = encodeURIComponent(String(msg.id));
+      location.hash = `#/value-chain?focus=${id}`;
+    }
+  });
 })();
