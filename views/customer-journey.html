@@ -2638,7 +2638,7 @@
           content.appendChild(note);
         } else {
           if (!allItems.length && lane.renderMode !== "foundation2x4") {
-            content.innerHTML = `<div class="error" style="grid-column:1/-1;">No processes found for this lane in data.json.</div>`;
+            content.innerHTML = `<div class="error" style="grid-column:1/-1;">No processes found for this lane in ../data/data.json.</div>`;
           } else {
             // attach itemsByL0 on the DOM element for support lanes
             content.__itemsByL0 = itemsByL0;
@@ -2723,14 +2723,16 @@
 
     renderStageHeader();
 
-    fetch("data.json")
+    // NOTE: This page lives under /views in the unified app shell.
+    // Data is stored under /data.
+    fetch("../data/data.json")
       .then(r => {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       })
       .then(data => {
         if (!data || !Array.isArray(data.children)) {
-          showError("data.json loaded but is missing expected 'children' array at root.");
+          showError("../data/data.json loaded but is missing expected 'children' array at root.");
           return;
         }
         ROOT = data;
@@ -2738,7 +2740,7 @@
         renderMap();
       })
       .catch(err => {
-        showError("Cannot load data.json. Run via a local server (not file://) and ensure data.json is next to this HTML. " + err);
+        showError("Cannot load ../data/data.json. Run via a local server (not file://). " + err);
         console.error(err);
       });
   </script>
