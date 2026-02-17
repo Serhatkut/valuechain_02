@@ -800,12 +800,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
-  
-/* Embedded mode (when opened in the Journey drawer) */
-body.embed #mini-nav{display:none !important;}
-body.embed .wrap{padding-top:10px;}
-
-</style>
+  </style>
 </head>
 
 <body>
@@ -988,10 +983,7 @@ body.embed .wrap{padding-top:10px;}
       updateFooterCounts();
 
       // If the app shell passed a focus id (e.g., from Customer Journey), navigate to it.
-      const params = new URLSearchParams(window.location.search);
-      const focusId = params.get('focus');
-      const isEmbed = params.get('embed') === '1' || params.get('embed') === 'true';
-      if (isEmbed) document.body.classList.add('embed');
+      const focusId = new URLSearchParams(window.location.search).get('focus');
       if (focusId) {
         // Defer slightly so initial layout is painted.
         setTimeout(() => focusById(focusId), 60);

@@ -79,15 +79,3 @@ body{
   border-top:1px solid var(--line);
   background: rgba(255,255,255,.02);
 }
-
-/* ---------------- Drawer (slide-up) used by Customer Journey ---------------- */
-.vc-drawer{position:fixed;inset:0;display:none;z-index:9999}
-.vc-drawer.is-open{display:block}
-.vc-drawer__backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35)}
-.vc-drawer__panel{position:absolute;left:0;right:0;bottom:0;height:min(78vh,820px);background:#fff;border-top-left-radius:18px;border-top-right-radius:18px;box-shadow:0 -20px 50px rgba(0,0,0,.25);transform:translateY(100%);transition:transform .22s ease-out;display:flex;flex-direction:column;overflow:hidden}
-.vc-drawer.is-open .vc-drawer__panel{transform:translateY(0)}
-.vc-drawer__bar{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid rgba(0,0,0,.08);background:linear-gradient(180deg,#fff,rgba(255,255,255,.92))}
-.vc-drawer__title{font-weight:800;font-size:13px;opacity:.85}
-.vc-drawer__close{appearance:none;border:0;background:rgba(0,0,0,.05);border-radius:10px;padding:8px 10px;cursor:pointer;font-weight:900}
-.vc-drawer__close:hover{background:rgba(0,0,0,.08)}
-.vc-drawer__frame{width:100%;height:100%;border:0;}

@@ -1,8 +1,5 @@
 (() => {
   const frame = document.getElementById('viewFrame');
-  const drawer = document.getElementById('vcDrawer');
-  const drawerFrame = document.getElementById('vcDrawerFrame');
-  const drawerTitle = document.getElementById('vcDrawerTitle');
   const openBtn = document.getElementById('openStandalone');
   const tabs = Array.from(document.querySelectorAll('.tab'));
 
@@ -50,32 +47,6 @@
   if (!location.hash) location.hash = '#/value-chain';
   navigate();
 
-  function openDrawerProcess(l1Id) {
-    if (!drawer || !drawerFrame) return;
-    const id = String(l1Id || '').trim();
-    if (!id) return;
-    if (drawerTitle) drawerTitle.textContent = `Process details · ${id}`;
-
-    drawer.classList.add('is-open');
-    drawer.setAttribute('aria-hidden', 'false');
-    drawerFrame.src = `views/value-chain.html?focus=${encodeURIComponent(id)}&embed=1`;
-  }
-
-  function closeDrawer() {
-    if (!drawer || !drawerFrame) return;
-    drawer.classList.remove('is-open');
-    drawer.setAttribute('aria-hidden', 'true');
-    drawerFrame.src = 'about:blank';
-  }
-
-  // close handlers
-  document.querySelectorAll('[data-drawer-close]').forEach((el) => {
-    el.addEventListener('click', closeDrawer);
-  });
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && drawer?.classList.contains('is-open')) closeDrawer();
-  });
-
   // Bridge: customer-journey view can request opening the Value Chain and focusing an ID.
   window.addEventListener('message', (ev) => {
     const msg = ev?.data;
@@ -83,17 +54,6 @@
     if (msg.type === 'VC_NAVIGATE' && msg.id) {
       const id = encodeURIComponent(String(msg.id));
       location.hash = `#/value-chain?focus=${id}`;
-      return;
-    }
-
-    // Preferred: keep Journey visible and open Value Chain details as a drawer
-    if (msg.type === 'VC_DRAWER_OPEN' && msg.id) {
-      openDrawerProcess(msg.id);
-      return;
-    }
-
-    if (msg.type === 'VC_DRAWER_CLOSE') {
-      closeDrawer();
     }
   });
 })();

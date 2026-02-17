@@ -2024,13 +2024,13 @@
      * Tiles
      ***********************/
 
-    // If this page runs inside the single-app shell, keep the Journey visible and
-    // open Value Chain details as a slide-up drawer in the parent shell.
+    // If this page runs inside the single-app shell, use the *same* Value Chain
+    // detail experience by asking the parent to open Value Chain and focus the id.
     // If running standalone, fall back to the in-page drawer behavior.
     function openInValueChain(id, fallbackFn) {
       try {
         if (window.parent && window.parent !== window) {
-          window.parent.postMessage({ type: "VC_DRAWER_OPEN", id }, "*");
+          window.parent.postMessage({ type: "VC_NAVIGATE", id }, "*");
           return true;
         }
       } catch (_) {}
@@ -2061,8 +2061,7 @@
         openInValueChain(it.l1Id, () => {
           selectL1(it.l0Id, it.l1Node);
           highlightActiveTile(it.l0Id, it.l1Id);
-          openDrawer();
-          renderDrawerL2L3();
+          closeDrawer();
         });
         hideTooltip();
       });
@@ -2305,8 +2304,7 @@
         openInValueChain(it.l1Id, () => {
           selectL1(it.l0Id, it.l1Node);
           highlightActiveTile(it.l0Id, it.l1Id);
-          openDrawer();
-          renderDrawerL2L3();
+          closeDrawer();
         });
         hideTooltip();
       });
